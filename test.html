@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>3D仿真翻页桌面日历</title>
+    <style>
+        :root {
+            --accent: #ff6b6b;
+            --check-color: #1dd1a1;
+            --paper-white: #fdfdfd;
+            --text-dark: #2d3436;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #a4b0be;
+            background-image: url('https://www.transparenttextures.com/patterns/dark-wood.png'); /* 木纹材质 */
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            perspective: 2000px;
+        }
+
+        /* 桌面装饰：便利贴 */
+        .sticky-note {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            background: #fff385;
+            left: 5%;
+            top: 10%;
+            transform: rotate(-7deg);
+            padding: 25px;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.2);
+            z-index: 2;
+            font-size: 1rem;
+            color: #555;
+            border-bottom-right-radius: 60px 5px;
+        }
+
+        .sticky-note strong { color: #d35400; display: block; margin-bottom: 10px; }
+
+        /* 桌面装饰：钢笔 */
+        .pen {
+            position: absolute;
+            width: 350px;
+            height: 15px;
+            background: linear-gradient(to bottom, #333, #111, #333);
+            bottom: 8%;
+            right: 10%;
+            transform: rotate(20deg);
+            border-radius: 10px;
+            box-shadow: 15px 25px 40px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+
+        /* 翻页控制按钮 - 放在两侧确保可见 */
+        .nav-control {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            color: white;
+            font-size: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        .nav-control:hover { background: rgba(255,255,255,0.4); transform: translateY(-50%) scale(1.1); }
+        .prev-btn { left: 30px; }
+        .next-btn { right: 30px; }
+
+        /* 日历主容器 */
+        .book-container {
+            position: relative;
+            width: 80vw;
+            max-width: 1100px;
+            height: 75vh;
+            max-height: 800px;
+            transform-style: preserve-3d;
+            transform: rotateX(8deg) rotateY(-2deg);
+        }
+
+        /* 底部基座页 */
+        .book-base {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 5px 15px 15px 5px;
+            box-shadow: 
+                2px 0 0 #ddd,
+                30px 40px 60px rgba(0,0,0,0.4);
+        }
+
+        /* 翻转页 */
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: var(--paper-white);
+            border-radius: 5px 15px 15px 5px;
+            transform-origin: left center;
+            transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
+            transform-style: preserve-3d;
+            z-index: 2;
+            backface-visibility: hidden;
+            box-shadow: inset 10px 0 30px rgba(0,0,0,0.05);
+        }
+
+        .page.flipped {
+            transform: rotateY(-170deg);
+        }
+
+        .page-content {
+            padding: 50px 60px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
+            background-size: 30px 30px; /* 纸张点状纹理 */
+        }
+
+        /* 头部样式 */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 30px;
+            border-bottom: 4px solid var(--text-dark);
+            padding-bottom: 15px;
+        }
+
+        .month-name {
+            font-size: 5rem;
+            font-weight: 900;
+            color: var(--accent);
+            line-height: 0.8;
+            letter-spacing: -2px;
+        }
+
+        .year-name {
+            font-size: 2.2rem;
+            color: #bdc3c7;
+            font-weight: 300;
+        }
+
+        /* 日历网格 */
+        .calendar-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 15px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-weight: 800;
+            color: #d1d8e0;
+            font-size: 1.1rem;
+            padding-bottom: 10px;
+        }
+
+        .day {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .day:hover:not(.empty) {
+            background: rgba(0,0,0,0.03);
+            transform: scale(1.1);
+        }
+
+        /* 打卡：圆珠笔手绘圈效果 */
+        .day.checked::before {
+            content: '';
+            position: absolute;
+            width: 65px;
+            height: 65px;
+            border: 4px solid var(--check-color);
+            border-radius: 52% 48% 51% 49% / 48% 52% 49% 51%;
+            transform: rotate(-10deg);
+            animation: drawCircle 0.4s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes drawCircle {
+            from { opacity: 0; transform: scale(1.5) rotate(-30deg); }
+            to { opacity: 1; transform: scale(1) rotate(-10deg); }
+        }
+
+        .day.today {
+            color: var(--accent);
+        }
+
+        .day.today::after {
+            content: '•';
+            position: absolute;
+            bottom: 0;
+            font-size: 2rem;
+        }
+
+        .empty { visibility: hidden; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 侧边导航按钮 -->
+    <button class="nav-control prev-btn" onclick="prevMonth()">❮</button>
+    <button class="nav-control next-btn" onclick="nextMonth()">❯</button>
+
+    <!-- 便利贴 -->
+    <div class="sticky-note">
+        <strong>TO DO LIST</strong>
+        • 每天进步一点点<br>
+        • 保持心情愉悦<br>
+        • 坚持打卡<br><br>
+        <div id="stat-count">本月已打卡：0天</div>
+    </div>
+
+    <!-- 钢笔 -->
+    <div class="pen"></div>
+
+    <!-- 日历主体 -->
+    <div class="book-container">
+        <!-- 底座（翻页时露出的下一页） -->
+        <div class="book-base" id="nextPageContent"></div>
+
+        <!-- 当前页 -->
+        <div class="page" id="mainPage">
+            <div class="page-content" id="calendarContent">
+                <!-- 内容由JS生成 -->
+            </div>
+        </div>
+    </div>
+
+<script>
+    let currentDate = new Date();
+    let checkInData = JSON.parse(localStorage.getItem('bookCalendarDataV2')) || [];
+    const mainPage = document.getElementById('mainPage');
+    const calendarContent = document.getElementById('calendarContent');
+    const statText = document.getElementById('stat-count');
+
+    const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", 
+                    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+
+    function getCalendarHTML(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const today = new Date();
+
+        let html = `
+            <div class="calendar-header">
+                <div class="month-name">${months[month]}</div>
+                <div class="year-name">${year}</div>
+            </div>
+            <div class="calendar-grid">
+                <div class="weekday">SUN</div><div class="weekday">MON</div><div class="weekday">TUE</div>
+                <div class="weekday">WED</div><div class="weekday">THU</div><div class="weekday">FRI</div><div class="weekday">SAT</div>
+        `;
+
+        // 填充空白
+        for (let i = 0; i < firstDay; i++) {
+            html += `<div class="day empty"></div>`;
+        }
+
+        // 填充日期
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${month + 1}-${d}`;
+            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+            const isChecked = checkInData.includes(dateStr);
+            
+            html += `
+                <div class="day ${isToday ? 'today' : ''} ${isChecked ? 'checked' : ''}" 
+                     onclick="toggleCheck('${dateStr}', this)">
+                    ${d}
+                </div>`;
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
+    function render() {
+        calendarContent.innerHTML = getCalendarHTML(currentDate);
+        updateStats();
+    }
+
+    function updateStats() {
+        const m = currentDate.getMonth() + 1;
+        const y = currentDate.getFullYear();
+        // 统计当月打卡天数
+        const monthCount = checkInData.filter(item => item.startsWith(`${y}-${m}-`)).length;
+        statText.innerText = `本月已打卡：${monthCount}天`;
+    }
+
+    function toggleCheck(dateStr, el) {
+        const index = checkInData.indexOf(dateStr);
+        if (index > -1) {
+            checkInData.splice(index, 1);
+            el.classList.remove('checked');
+        } else {
+            checkInData.push(dateStr);
+            el.classList.add('checked');
+        }
+        localStorage.setItem('bookCalendarDataV2', JSON.stringify(checkInData));
+        updateStats();
+    }
+
+    function prevMonth() { flipPage(-1); }
+    function nextMonth() { flipPage(1); }
+
+    function flipPage(step) {
+        // 在底座先渲染好“下一页”的内容
+        const nextDate = new Date(currentDate);
+        nextDate.setMonth(currentDate.getMonth() + step);
+        document.getElementById('nextPageContent').innerHTML = getCalendarHTML(nextDate);
+
+        // 启动翻页动画
+        mainPage.classList.add('flipped');
+        
+        setTimeout(() => {
+            // 动画中途更换数据源并重置页面
+            currentDate.setMonth(currentDate.getMonth() + step);
+            render();
+            mainPage.style.transition = 'none'; // 瞬间回到原位
+            mainPage.classList.remove('flipped');
+            
+            setTimeout(() => {
+                mainPage.style.transition = 'transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1)';
+            }, 50);
+        }, 800);
+    }
+
+    // 初始化渲染
+    render();
+</script>
+</body>
+</html>
