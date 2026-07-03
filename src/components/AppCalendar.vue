@@ -17,6 +17,7 @@ import Bookmarks from './calendar/Bookmarks.vue'
 import MemoNote from './calendar/MemoNote.vue'
 import Calculator from './calendar/Calculator.vue'
 import SearchEngine from './calendar/SearchEngine.vue'
+import TranslateBox from './calendar/TranslateBox.vue'
 import WidgetWrapper from './calendar/WidgetWrapper.vue'
 
 const widgetMap: Record<string, any> = {
@@ -31,6 +32,7 @@ const widgetMap: Record<string, any> = {
   memo: markRaw(MemoNote),
   calculator: markRaw(Calculator),
   searchengine: markRaw(SearchEngine),
+  translate: markRaw(TranslateBox),
 }
 
 // Widget instances

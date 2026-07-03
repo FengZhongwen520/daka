@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { Project, CheckIn, Photo, Memo, ExportData } from '../types'
 
-export interface SiteItem { id?: number; url: string; title: string; createdAt: Date }
+export interface SiteItem { id?: number; url: string; title: string; widgetId: number; createdAt: Date }
 export interface WidgetInstance { id?: number; type: string; x: number; y: number; projectId: number }
 
 class DakaDB extends Dexie {
@@ -19,7 +19,7 @@ class DakaDB extends Dexie {
       checkins: '++id, [projectId+date]',
       photos: '++id, position',
       memos: '++id, memoKey',
-      sites: '++id',
+      sites: '++id, widgetId',
       bookmarkFolders: '++id',
       widgets: '++id, type, projectId',
     })
@@ -102,17 +102,17 @@ export async function saveMemo(memoKey: string, data: Omit<Memo, 'id' | 'created
 }
 
 // Sites (bookmark grid)
-export async function getSites(): Promise<SiteItem[]> {
-  return db.sites.toArray()
+export async function getSites(widgetId: number): Promise<SiteItem[]> {
+  return db.sites.where('widgetId').equals(widgetId).toArray()
 }
-export async function addSiteItem(url: string, title: string): Promise<void> {
-  await db.sites.add({ url, title, createdAt: new Date() })
+export async function addSiteItem(url: string, title: string, widgetId: number): Promise<void> {
+  await db.sites.add({ url, title, widgetId, createdAt: new Date() })
 }
 export async function removeSiteItem(id: number): Promise<void> {
   await db.sites.delete(id)
 }
-export async function clearSites(): Promise<void> {
-  await db.sites.clear()
+export async function clearSites(widgetId: number): Promise<void> {
+  await db.sites.where('widgetId').equals(widgetId).delete()
 }
 
 // Widget instances

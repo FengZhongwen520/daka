@@ -7,7 +7,8 @@ interface Site { id?: number; url: string; title: string }
 
 const sites = ref<Site[]>([])
 
-onMounted(async () => { sites.value = await getSites() })
+const wid = computed(() => props.widgetId ?? 0)
+onMounted(async () => { sites.value = await getSites(wid.value) })
 
 // Title
 const saved = JSON.parse(localStorage.getItem('bm-title') || 'null')
@@ -38,21 +39,40 @@ const displaySlots = computed(() => {
   return slots
 })
 
-// Add dialog
+// Add panel
 const showAdd = ref(false)
-const addUrl = ref('')
-const addTitle = ref('')
-async function submitAdd() {
-  const url = addUrl.value.trim()
-  if (!url) { ElMessage.warning('请输入网址'); return }
-  let fixed = url
-  if (!/^https?:\/\//.test(fixed)) fixed = 'https://' + fixed
-  await addSiteItem(fixed, addTitle.value.trim() || fixed)
-  sites.value = await getSites()
-  showAdd.value = false
-  ElMessage.success('已添加')
+const addRows = ref<{ url: string; title: string }[]>([{ url: '', title: '' }])
+
+function openAddPanel() {
+  addRows.value = [{ url: '', title: '' }]
+  showAdd.value = true
 }
-async function removeSite(id: number) { await removeSiteItem(id); sites.value = await getSites() }
+
+function addRow() {
+  addRows.value.push({ url: '', title: '' })
+}
+
+function removeRow(index: number) {
+  if (addRows.value.length <= 1) return
+  addRows.value.splice(index, 1)
+}
+
+async function submitAdd() {
+  let count = 0
+  for (const row of addRows.value) {
+    const url = row.url.trim()
+    if (!url) continue
+    let fixed = url
+    if (!/^https?:\/\//.test(fixed)) fixed = 'https://' + fixed
+    await addSiteItem(fixed, row.title.trim() || fixed, wid.value)
+    count++
+  }
+  if (count === 0) { ElMessage.warning('请至少输入一个网址'); return }
+  sites.value = await getSites(wid.value)
+  showAdd.value = false
+  ElMessage.success(`已添加 ${count} 个网址`)
+}
+async function removeSite(id: number) { await removeSiteItem(id); sites.value = await getSites(wid.value) }
 
 // Favicon
 function faviconUrl(url: string) {
@@ -146,20 +166,20 @@ async function onImportFile(e: Event) {
 
 async function importFolder(index: number) {
   const folder = importFolders.value[index]
-  await clearSites()
-  for (const b of folder.bookmarks) await addSiteItem(b.url, b.title)
-  sites.value = await getSites()
+  await clearSites(wid.value)
+  for (const b of folder.bookmarks) await addSiteItem(b.url, b.title, wid.value)
+  sites.value = await getSites(wid.value)
   importMode.value = false
   ElMessage.success(`「${folder.name}」导入 ${folder.bookmarks.length} 个网址`)
 }
 
 async function importAll() {
-  await clearSites()
+  await clearSites(wid.value)
   let count = 0
   for (const f of importFolders.value) {
-    for (const b of f.bookmarks) { await addSiteItem(b.url, b.title); count++ }
+    for (const b of f.bookmarks) { await addSiteItem(b.url, b.title, wid.value); count++ }
   }
-  sites.value = await getSites()
+  sites.value = await getSites(wid.value)
   importMode.value = false
   ElMessage.success(`全部导入 ${count} 个网址`)
 }
@@ -206,7 +226,7 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
           </a>
           <button class="bm-del-btn" @click.stop="removeSite(slot.id!)">✕</button>
         </template>
-        <button v-else class="bm-add-btn" @click="showAdd = true; addUrl = ''; addTitle = ''">+</button>
+        <button v-else class="bm-add-btn" @click="openAddPanel">+</button>
       </div>
     </div>
 
@@ -233,16 +253,29 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 
     <input ref="fileInput" type="file" accept=".html,.htm" style="display:none" @change="onImportFile" />
 
-    <el-dialog v-model="showAdd" title="添加网站" width="340px" :close-on-click-modal="false">
-      <el-form label-position="top" @submit.prevent="submitAdd">
-        <el-form-item label="网址"><el-input v-model="addUrl" placeholder="https://example.com" @keyup.enter="submitAdd" /></el-form-item>
-        <el-form-item label="名称"><el-input v-model="addTitle" placeholder="网站名称（可选）" @keyup.enter="submitAdd" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAdd = false">取消</el-button>
-        <el-button type="primary" @click="submitAdd">添加</el-button>
-      </template>
-    </el-dialog>
+    <!-- Multi-row add overlay -->
+    <div v-if="showAdd" class="bm-add-overlay" @mousedown.stop>
+      <div class="bm-add-panel">
+        <div class="bm-add-header">
+          <span>添加网址</span>
+          <button class="bm-add-close" @click="showAdd = false">✕</button>
+        </div>
+        <div class="bm-add-rows">
+          <div v-for="(row, i) in addRows" :key="i" class="bm-add-row">
+            <input v-model="row.url" placeholder="网址 https://..." class="bm-add-input" @keyup.enter="submitAdd" />
+            <input v-model="row.title" placeholder="名称" class="bm-add-input bm-add-title" />
+            <button v-if="addRows.length > 1" class="bm-add-remove" @click="removeRow(i)">✕</button>
+          </div>
+        </div>
+        <div class="bm-add-actions">
+          <button class="bm-add-more" @click="addRow">+ 添加网址</button>
+          <div class="bm-add-right">
+            <el-button @click="showAdd = false" size="small">取消</el-button>
+            <el-button type="primary" @click="submitAdd" size="small">保存全部</el-button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -291,6 +324,40 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 .bm-add-btn:hover { color: #2DD4A8; transform: scale(1.15); }
 .bm-del-btn { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; border: none; background: rgba(0,0,0,0.3); color: #fff; cursor: pointer; font-size: 7px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
 .bm-cell:hover .bm-del-btn { opacity: 1; }
+
+/* Add panel overlay */
+.bm-add-overlay {
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 40px;
+}
+.bm-add-panel {
+  width: 100%; max-height: 100%; display: flex; flex-direction: column;
+  padding: 0 14px 14px;
+}
+.bm-add-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px; font-size: 0.85rem; font-weight: 700; color: #444;
+}
+.bm-add-close { width: 22px; height: 22px; border: none; background: rgba(0,0,0,0.06); border-radius: 50%; cursor: pointer; font-size: 10px; color: #999; display: flex; align-items: center; justify-content: center; }
+.bm-add-close:hover { background: rgba(0,0,0,0.12); }
+.bm-add-rows { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+.bm-add-row { display: flex; gap: 6px; align-items: center; }
+.bm-add-input {
+  flex: 1; padding: 8px 10px; border: 1.5px solid #e0e0e0; border-radius: 8px;
+  font-size: 0.8rem; outline: none; font-family: inherit;
+  transition: border-color 0.2s; min-width: 0;
+}
+.bm-add-input:focus { border-color: #2DD4A8; }
+.bm-add-title { flex: 0 0 30%; max-width: 30%; }
+.bm-add-remove { width: 24px; height: 24px; border: none; background: rgba(0,0,0,0.06); border-radius: 50%; cursor: pointer; font-size: 10px; color: #999; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bm-add-remove:hover { background: rgba(231,76,60,0.1); color: #e74c3c; }
+.bm-add-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-shrink: 0; }
+.bm-add-more { border: 1.5px dashed #d0d0d0; background: none; cursor: pointer; font-size: 0.75rem; color: #999; padding: 6px 12px; border-radius: 8px; transition: all 0.2s; font-family: inherit; }
+.bm-add-more:hover { border-color: #2DD4A8; color: #2DD4A8; }
+.bm-add-right { display: flex; gap: 6px; }
 
 .bm-import-body { display: flex; flex-direction: column; gap: 4px; padding: 0; }
 .bm-import-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 700; color: #444; margin-bottom: 2px; }

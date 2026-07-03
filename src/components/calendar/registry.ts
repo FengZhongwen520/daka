@@ -18,6 +18,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'memo', name: '便签', icon: '📝', desc: '可拖拽文字便签', defaultPos: { x: 100, y: 100 } },
   { type: 'calculator', name: '计算器', icon: '🔢', desc: '科学计算 + 历史记录', defaultPos: { x: 500, y: 100 } },
   { type: 'searchengine', name: '搜索引擎', icon: '🔎', desc: '多引擎搜索 + 历史记录', defaultPos: { x: 420, y: 280 } },
+  { type: 'translate', name: '翻译', icon: '🌐', desc: '中英互译 + 语言检测', defaultPos: { x: 520, y: 200 } },
 ]
 
 export const DEFAULT_WIDGETS = ['calendar', 'sticky', 'photoframe', 'weather']

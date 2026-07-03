@@ -190,11 +190,11 @@ function formatTime(ts: number) {
         </button>
       </div>
 
-      <!-- History -->
-      <div v-if="history.length > 0" class="se-history">
+      <!-- History — always visible, fixed height -->
+      <div class="se-history">
         <div class="se-history-header">
           <span>🕐 搜索记录</span>
-          <button class="se-history-clear" @click="clearHistory" title="清空记录">清空</button>
+          <button v-if="history.length > 0" class="se-history-clear" @click="clearHistory" title="清空记录">清空</button>
         </div>
         <div ref="historyListRef" class="se-history-list">
           <div
@@ -210,6 +210,7 @@ function formatTime(ts: number) {
             <span class="se-history-time">{{ formatTime(h.time) }}</span>
             <button class="se-history-del" @click.stop="deleteHistory(i)" title="删除">✕</button>
           </div>
+          <div v-if="history.length === 0" class="se-history-empty">暂无搜索记录</div>
         </div>
       </div>
     </div>
@@ -404,7 +405,7 @@ function formatTime(ts: number) {
 .se-history-clear:hover { color: #e74c3c; }
 
 .se-history-list {
-  max-height: 152px; /* ~4 items at 38px each */
+  height: 152px; /* fixed: ~4 items at 38px each */
   overflow-y: auto;
   scroll-behavior: smooth;
 }
@@ -464,6 +465,16 @@ function formatTime(ts: number) {
 }
 .se-history-item:hover .se-history-del { opacity: 1; }
 .se-history-del:hover { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+
+.se-history-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 0.75rem;
+  color: #d0d0d0;
+  user-select: none;
+}
 
 /* Hint */
 .se-hint {
