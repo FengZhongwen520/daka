@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper } from '../store'
-import { getProjects, deleteProject } from '../db'
+import { getProjects, deleteProject, updateProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
 import { db } from '../db'
 import type { Project } from '../types'
@@ -99,6 +99,14 @@ function toggleModule(name: string) {
 
 function onImportClick() { fileInput.value?.click() }
 
+function editProjectName(p: Project) {
+  const name = prompt('输入新名称：', p.name)
+  if (name && name.trim()) {
+    updateProject(p.id!, { name: name.trim() })
+    loadProjects()
+  }
+}
+
 async function onFileChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -148,15 +156,16 @@ watch(showModal, async (visible) => {
             :key="p.id"
             class="bubble-project-item"
             :class="{ active: selectedProjectId === p.id }"
-            @click="selectProject(p.id!); activeModule = ''"
           >
-            <span class="project-color-dot" :style="{ background: p.color }"></span>
-            {{ p.icon }} {{ p.name }}
+            <span class="project-color-dot" :style="{ background: p.color }" @click="selectProject(p.id!); activeModule = ''"></span>
+            <span @click="selectProject(p.id!); activeModule = ''">{{ p.icon }} {{ p.name }}</span>
+            <button class="bubble-project-edit" @click.stop="editProjectName(p)" title="重命名">✎</button>
+            <button class="bubble-project-del" @click.stop="onDelete(p.id!, $event)" title="删除">✕</button>
           </div>
           <div v-if="projects.length === 0" class="bubble-empty">暂无项目</div>
         </div>
         <el-button class="btn-block btn-sm" @click="onAddClick" :disabled="projects.length >= MAX_PROJECTS">
-          + 新增 ({{ projects.length }}/{{ MAX_PROJECTS }})
+          {{ projects.length >= MAX_PROJECTS ? '项目已满' : `+ 新增 (${projects.length}/${MAX_PROJECTS})` }}
         </el-button>
         <div class="bubble-row">
           <button class="sidebar-text-btn" @click="handleExport">↥ 导出</button>
@@ -301,7 +310,20 @@ watch(showModal, async (visible) => {
   transition: background 0.15s;
 }
 .bubble-project-item:hover { background: rgba(0,0,0,0.04); }
+.bubble-project-item { gap: 4px; }
+.bubble-project-item span { flex: 1; cursor: pointer; }
 .bubble-project-item.active { background: rgba(45,212,168,0.1); color: #2DD4A8; }
+.bubble-project-edit, .bubble-project-del {
+  width: 18px; height: 18px; border-radius: 50%; border: none;
+  cursor: pointer; font-size: 9px; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.15s; flex-shrink: 0;
+}
+.bubble-project-edit { background: rgba(0,0,0,0.06); color: #888; }
+.bubble-project-del { background: rgba(0,0,0,0.06); color: #888; }
+.bubble-project-item:hover .bubble-project-edit,
+.bubble-project-item:hover .bubble-project-del { opacity: 1; }
+.bubble-project-edit:hover { background: #2DD4A8; color: #fff; }
+.bubble-project-del:hover { background: #e74c3c; color: #fff; }
 .bubble-empty { font-size: 0.7rem; color: #ccc; text-align: center; padding: 8px; }
 
 .bubble-title { font-size: 0.8rem; font-weight: 700; color: #444; margin-bottom: 2px; }
