@@ -4,27 +4,34 @@ import { ref, provide } from 'vue'
 const props = defineProps<{ widgetId: number; type: string }>()
 const emit = defineEmits<{ delete: [] }>()
 
-// Context menu
+// Global shared state — all instances use the same menu
+let activeMenu: { close: () => void } | null = null
+
 const showMenu = ref(false)
 const menuX = ref(0)
 const menuY = ref(0)
 
 function onContextMenu(e: MouseEvent) {
   e.preventDefault()
+  // Close any previous menu (even from other widget instances)
+  if (activeMenu && activeMenu !== menuState) activeMenu.close()
   menuX.value = e.clientX
   menuY.value = e.clientY
   showMenu.value = true
-  document.addEventListener('click', closeMenu, { once: true })
+  activeMenu = menuState
+  setTimeout(() => document.addEventListener('click', closeMenu, { once: true }), 0)
 }
 
-function closeMenu() { showMenu.value = false }
+const menuState = { close }
+
+function close() { showMenu.value = false; if (activeMenu === menuState) activeMenu = null }
+function closeMenu() { close() }
 
 function onDelete() {
-  showMenu.value = false
+  close()
   emit('delete')
 }
 
-// Provide widget ID to child for unique position keys
 provide('widgetId', props.widgetId)
 provide('widgetType', props.type)
 </script>
@@ -32,7 +39,6 @@ provide('widgetType', props.type)
 <template>
   <div class="widget-wrapper" @contextmenu="onContextMenu">
     <slot />
-    <!-- Context menu -->
     <Teleport to="body">
       <div v-if="showMenu" class="widget-menu" :style="{ left: menuX + 'px', top: menuY + 'px' }" @click.stop>
         <button class="widget-menu-item" @click="onDelete">🗑 删除组件</button>
@@ -42,26 +48,16 @@ provide('widgetType', props.type)
 </template>
 
 <style scoped>
-.widget-wrapper {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.widget-wrapper > :deep(*) {
-  pointer-events: auto;
-}
+.widget-wrapper { position: absolute; inset: 0; pointer-events: none; }
+.widget-wrapper > :deep(*) { pointer-events: auto; }
 </style>
 
 <style>
 .widget-menu {
-  position: fixed;
-  z-index: 9999;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(12px);
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  padding: 4px;
-  min-width: 120px;
+  position: fixed; z-index: 9999;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+  border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 4px; min-width: 120px;
 }
 .widget-menu-item {
   display: flex; align-items: center; gap: 6px;

@@ -1,75 +1,154 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { getPhoto, savePhoto, deletePhoto } from '../../db'
 
 const props = defineProps<{ position?: 'left' | 'right'; widgetId?: number }>()
-
-// Unique key per instance
 const photoKey = `photo-${props.widgetId ?? props.position ?? 'default'}`
 
 // Position
-const defaults = props.position === 'left'
-  ? { x: 60, y: 200 }
-  : { x: 820, y: 200 }
+const defaults = props.position === 'left' ? { x: 60, y: 200 } : { x: 820, y: 200 }
 const posKey = `photo-pos-${props.widgetId ?? props.position ?? 'default'}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(saved?.x ?? defaults.x)
 const y = ref(saved?.y ?? defaults.y)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
-// Drag with click suppression
-let dragMoved = false, dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
+// Photos array (support both single and multiple)
+const photos = ref<string[]>([])
+const currentIndex = ref(0)
+const slideshow = ref(false)
+let slideTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(async () => {
+  const saved = localStorage.getItem(photoKey + '-data')
+  if (saved) {
+    try { photos.value = JSON.parse(saved) } catch { photos.value = [] }
+  } else {
+    const p = await getPhoto(photoKey)
+    if (p?.dataUrl) photos.value = [p.dataUrl]
+  }
+  if (photos.value.length > 1) startSlideshow()
+})
+
+function saveData() {
+  localStorage.setItem(photoKey + '-data', JSON.stringify(photos.value))
+}
+
+function startSlideshow() {
+  slideshow.value = true
+  clearInterval(slideTimer!)
+  if (photos.value.length > 1) {
+    slideTimer = setInterval(() => {
+      currentIndex.value = (currentIndex.value + 1) % photos.value.length
+    }, 4000)
+  }
+}
+
+function stopSlideshow() {
+  slideshow.value = false
+  clearInterval(slideTimer!)
+  slideTimer = null
+}
+
+onUnmounted(() => clearInterval(slideTimer!))
+
+// Drag
+let dragMoved = false, dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {
   dragging = true; dragMoved = false
-  startX = e.clientX; startY = e.clientY; initX = x.value; initY = y.value
+  sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value
   document.addEventListener('mousemove', onDragMove); document.addEventListener('mouseup', onDragEnd)
 }
 function onDragMove(e: MouseEvent) {
   if (!dragging) return
-  const dx = e.clientX - startX, dy = e.clientY - startY
+  const dx = e.clientX - sx, dy = e.clientY - sy
   if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true
-  x.value = initX + dx; y.value = initY + dy
+  x.value = ix + dx; y.value = iy + dy
 }
 function onDragEnd() { dragging = false; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
 
 function onClickFrame() { if (!dragMoved) triggerUpload() }
 
-const photo = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement>()
-
-onMounted(async () => {
-  const p = await getPhoto(photoKey)
-  if (p) photo.value = p.dataUrl
-})
 
 function triggerUpload() { fileInput.value?.click() }
 
-async function onFileChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = async () => {
-    const dataUrl = reader.result as string
-    await savePhoto(photoKey, dataUrl)
-    photo.value = dataUrl
+async function onFilesChange(e: Event) {
+  const files = (e.target as HTMLInputElement).files
+  if (!files || files.length === 0) return
+  const readers: Promise<string>[] = []
+  for (const file of files) {
+    readers.push(new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(file)
+    }))
   }
-  reader.readAsDataURL(file)
+  const results = await Promise.all(readers)
+  if (files.length === 1 && photos.value.length === 0) {
+    photos.value = [results[0]]
+  } else {
+    photos.value = [...photos.value, ...results]
+  }
+  currentIndex.value = photos.value.length - results.length
+  saveData()
+  if (photos.value.length > 1 && !slideshow.value) startSlideshow()
 }
 
-async function onDelete() {
-  await deletePhoto(photoKey)
-  photo.value = null
+async function onDelete(e: Event) {
+  e.stopPropagation()
+  if (photos.value.length > 1) {
+    // Delete current photo from array
+    photos.value.splice(currentIndex.value, 1)
+    if (currentIndex.value >= photos.value.length) currentIndex.value = 0
+    saveData()
+    if (photos.value.length <= 1) stopSlideshow()
+  } else {
+    photos.value = []
+    saveData()
+    stopSlideshow()
+  }
+}
+
+function nextPhoto(e: Event) {
+  e.stopPropagation()
+  e.preventDefault()
+  if (photos.value.length <= 1) return
+  stopSlideshow()
+  currentIndex.value = (currentIndex.value + 1) % photos.value.length
+}
+
+function prevPhoto(e: Event) {
+  e.stopPropagation()
+  e.preventDefault()
+  if (photos.value.length <= 1) return
+  stopSlideshow()
+  currentIndex.value = (currentIndex.value - 1 + photos.value.length) % photos.value.length
 }
 </script>
 
 <template>
   <div class="photo-frame" :style="{ left: x + 'px', top: y + 'px' }" @click="onClickFrame">
     <div class="photo-drag-bar" @mousedown.stop="onDragStart"><span class="drag-dots">⋮⋮</span></div>
-    <img v-if="photo" :src="photo" class="photo-img" />
-    <span v-else class="photo-placeholder">+</span>
-    <button v-if="photo" class="photo-del" @click.stop="onDelete">✕</button>
+
+    <!-- Empty -->
+    <span v-if="photos.length === 0" class="photo-placeholder">+</span>
+
+    <!-- Photos -->
+    <template v-else>
+      <img :src="photos[currentIndex]" class="photo-img" />
+      <!-- Multi-photo nav -->
+      <template v-if="photos.length > 1">
+        <button class="photo-nav photo-prev" @click.stop="prevPhoto">‹</button>
+        <button class="photo-nav photo-next" @click.stop="nextPhoto">›</button>
+        <div class="photo-dots">
+          <span v-for="(_, i) in photos" :key="i" class="photo-dot" :class="{ active: i === currentIndex }" @click.stop="currentIndex = i"></span>
+        </div>
+      </template>
+      <button class="photo-del" @click.stop="onDelete">✕</button>
+    </template>
   </div>
-  <input ref="fileInput" type="file" accept="image/*" style="display:none" @change="onFileChange" />
+  <input ref="fileInput" type="file" accept="image/*" multiple style="display:none" @change="onFilesChange" />
 </template>
 
 <style scoped>
@@ -98,4 +177,29 @@ async function onDelete() {
   opacity: 0; transition: opacity 0.2s; z-index: 4;
 }
 .photo-frame:hover .photo-del { opacity: 1; }
+
+/* Multi-photo nav */
+.photo-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.3); color: #fff; cursor: pointer;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s; z-index: 4;
+}
+.photo-frame:hover .photo-nav { opacity: 1; }
+.photo-prev { left: 4px; }
+.photo-next { right: 4px; }
+.photo-nav:hover { background: rgba(0,0,0,0.5); }
+
+.photo-dots {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 4px; z-index: 4; opacity: 0; transition: opacity 0.2s;
+}
+.photo-frame:hover .photo-dots { opacity: 1; }
+.photo-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.5); cursor: pointer;
+  transition: all 0.2s;
+}
+.photo-dot.active { background: #fff; transform: scale(1.3); }
 </style>

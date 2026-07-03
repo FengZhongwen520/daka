@@ -151,7 +151,7 @@ onUnmounted(() => cancelAnimationFrame(animId))
     </div>
 
     <!-- Gallery dialog -->
-    <el-dialog v-model="showGallery" title="添加组件" width="520px" :close-on-click-modal="false">
+    <el-dialog v-model="showGallery" title="添加组件" width="580px" :close-on-click-modal="false">
       <div class="gallery-grid">
         <div
           v-for="w in WIDGETS"
@@ -197,13 +197,14 @@ onUnmounted(() => cancelAnimationFrame(animId))
   width: 28px; height: 28px; border-radius: 50%;
   border: 1.5px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.25);
   backdrop-filter: blur(8px); cursor: pointer;
-  font-size: 18px; color: rgba(0,0,0,0.4); font-weight: 300;
+  font-size: 20px; color: rgba(0,0,0,0.4); font-weight: 300;
   display: flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 0;
   transition: all 0.2s;
 }
 .add-widget-btn:hover { background: rgba(255,255,255,0.45); color: #2DD4A8; transform: scale(1.1); }
 
-.gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .gallery-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 16px 8px; border-radius: 12px; cursor: pointer;

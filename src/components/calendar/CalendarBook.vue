@@ -100,10 +100,8 @@ defineExpose({ checkedCountThisMonth, totalDays, project })
 
 function flipPage(delta: number) {
   if (flipped.value || !pageRef.value) return
-  let nm = currentMonth.value + delta, ny = currentYear.value
-  if (nm > 12) { nm = 1; ny++ }
-  if (nm < 1) { nm = 12; ny-- }
-  nextPageHTML.value = buildStaticHTML(ny, nm, checkedDates.value)
+  // Show CURRENT month on the base layer during flip — avoids next-month text leaking through
+  nextPageHTML.value = buildStaticHTML(currentYear.value, currentMonth.value, checkedDates.value)
   flipped.value = true
   setTimeout(() => {
     navigateMonth(delta)
@@ -120,6 +118,7 @@ function flipPage(delta: number) {
 
 async function onToggleDay(day: CalendarDay) {
   if (!day.isCurrentMonth || selectedProjectId.value === null) return
+  if (flipped.value) return // prevent clicks during page flip animation
   const checked = await toggleCheckIn(selectedProjectId.value, day.date)
   const next = new Set(checkedDates.value)
   checked ? next.add(day.date) : next.delete(day.date)
@@ -173,9 +172,14 @@ async function onToggleDay(day: CalendarDay) {
 .book-wrapper {
   position: absolute;
   z-index: 54;
+  padding-top: 24px; /* reserve space for absolute drag bar — prevents layout shift */
 }
 
 .book-drag-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 24px;
   background: rgba(0,0,0,0.1);
   display: flex;
@@ -185,6 +189,7 @@ async function onToggleDay(day: CalendarDay) {
   opacity: 0;
   transition: opacity 0.2s;
   border-radius: 5px 5px 0 0;
+  z-index: 10;
 }
 .book-wrapper:hover .book-drag-bar { opacity: 1; }
 .book-drag-bar:active { cursor: grabbing; background: rgba(0,0,0,0.16); }
@@ -311,11 +316,10 @@ async function onToggleDay(day: CalendarDay) {
   color: #2d3436;
   cursor: pointer;
   border-radius: 8px;
-  transition: all 0.2s;
+  transition: background 0.15s, color 0.15s;
 }
 .day:hover:not(.empty) {
-  background: rgba(0,0,0,0.03);
-  transform: scale(1.1);
+  background: rgba(0,0,0,0.04);
 }
 .day.empty { visibility: hidden; }
 .day.checked { color: var(--check-color, #1dd1a1); }
