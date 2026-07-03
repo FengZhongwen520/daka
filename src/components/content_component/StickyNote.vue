@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
 // Load saved text
 const textKey = `sticky-text${props.widgetId != null ? '-' + props.widgetId : ''}`
@@ -11,8 +11,8 @@ watch(text, (v) => localStorage.setItem(textKey, v))
 // Position
 const posKey = `sticky-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(saved?.x ?? 80)
-const y = ref(saved?.y ?? 12)
+const x = ref(saved?.x ?? props.initialX ?? 80)
+const y = ref(saved?.y ?? props.initialY ?? 12)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0

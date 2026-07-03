@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick, markRaw } from 'vue'
-import { selectedProjectId, weatherData } from '../store/index.ts'
-import { getWidgets, addWidget, removeWidget, updateWidgetPos } from '../db/index.ts'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, markRaw } from 'vue'
+import { selectedProjectId, weatherData, weatherWallpaper, customWallpaper } from '../store/index.ts'
+import { getWidgets, addWidget, removeWidget, updateWidgetPos, getWallpaper } from '../db/index.ts'
 import { WIDGETS, DEFAULT_WIDGETS } from './content_component/registry.ts'
 import type { WidgetInstance } from '../db/index.ts'
 
@@ -19,6 +19,7 @@ import Calculator from './content_component/Calculator.vue'
 import SearchEngine from './content_component/SearchEngine.vue'
 import TranslateBox from './content_component/TranslateBox.vue'
 import Fan from './content_component/Fan.vue'
+import ClockWidget from './content_component/ClockWidget.vue'
 import WidgetWrapper from './content_component/WidgetWrapper.vue'
 
 const widgetMap: Record<string, any> = {
@@ -35,6 +36,7 @@ const widgetMap: Record<string, any> = {
   searchengine: markRaw(SearchEngine),
   translate: markRaw(TranslateBox),
   fan: markRaw(Fan),
+  clock: markRaw(ClockWidget),
 }
 
 // Widget instances
@@ -48,11 +50,22 @@ async function loadWidgets() {
 onMounted(loadWidgets)
 watch(selectedProjectId, loadWidgets)
 
+const sceneRef = ref<HTMLElement>()
+
+function getNewWidgetPos(): { x: number; y: number } {
+  const el = sceneRef.value
+  const w = el?.clientWidth ?? 1000
+  // Center horizontally with a small random spread, top-aligned with slight cascade
+  const x = w / 2 - 120 + (Math.random() - 0.5) * 200
+  const y = 40 + widgets.value.length * 18 + Math.random() * 30
+  return { x: Math.round(x), y: Math.round(y) }
+}
+
 async function onAddWidget(type: string) {
   if (!widgetMap[type] || !selectedProjectId.value) return
-  const def = WIDGETS.find(w => w.type === type)
-  const id = await addWidget(type, def?.defaultPos.x ?? 400, def?.defaultPos.y ?? 300, selectedProjectId.value)
-  widgets.value.push({ id, type, x: def?.defaultPos.x ?? 400, y: def?.defaultPos.y ?? 300, projectId: selectedProjectId.value })
+  const pos = getNewWidgetPos()
+  const id = await addWidget(type, pos.x, pos.y, selectedProjectId.value)
+  widgets.value.push({ id, type, x: pos.x, y: pos.y, projectId: selectedProjectId.value })
 }
 
 async function onRemoveWidget(id: number) {
@@ -63,6 +76,25 @@ async function onRemoveWidget(id: number) {
 // Gallery
 const showGallery = ref(false)
 const selectedType = ref('')
+
+// Wallpaper
+const sceneBgStyle = computed(() => {
+  if (!weatherWallpaper.value && customWallpaper.value) {
+    return { backgroundImage: `url(${customWallpaper.value})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  }
+  return {}
+})
+
+onMounted(async () => {
+  customWallpaper.value = await getWallpaper()
+})
+
+watch(customWallpaper, async (v) => {
+  if (v) {
+    const { saveWallpaper } = await import('../db/index.ts')
+    await saveWallpaper(v)
+  }
+})
 
 // Weather effects
 const canvasRef = ref<HTMLCanvasElement>()
@@ -118,8 +150,22 @@ function startParticles(code: number) {
   animate()
 }
 
-watch(() => weatherData.value?.code, async (code) => { if (code != null) { await nextTick(); startParticles(code) } }, { immediate: true })
-onMounted(async () => { if (weatherData.value?.code != null) { await nextTick(); startParticles(weatherData.value.code) } })
+watch(() => weatherData.value?.code, async (code) => {
+  if (code != null && weatherWallpaper.value) { await nextTick(); startParticles(code) }
+  else { if (animId) cancelAnimationFrame(animId); animId = 0 }
+}, { immediate: true })
+
+watch(weatherWallpaper, async (on) => {
+  if (!on) {
+    if (animId) cancelAnimationFrame(animId); animId = 0
+    const canvas = canvasRef.value
+    if (canvas) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height)
+  } else if (weatherData.value?.code != null) {
+    await nextTick()
+    startParticles(weatherData.value.code)
+  }
+})
+
 onUnmounted(() => cancelAnimationFrame(animId))
 </script>
 
@@ -130,7 +176,7 @@ onUnmounted(() => cancelAnimationFrame(animId))
       <span class="empty-text">在左侧选择或创建一个打卡项目</span>
     </div>
 
-    <div v-else class="calendar-scene" :class="weatherData ? getWeatherClass(weatherData.code) : ''">
+    <div v-else ref="sceneRef" class="calendar-scene" :class="weatherData && weatherWallpaper ? getWeatherClass(weatherData.code) : ''" :style="sceneBgStyle">
       <canvas v-if="weatherData && weatherData.code >= 1 && weatherData.code <= 99" ref="canvasRef" class="weather-canvas"></canvas>
 
       <!-- Add widget button -->
@@ -144,7 +190,7 @@ onUnmounted(() => cancelAnimationFrame(animId))
         :type="w.type"
         @delete="onRemoveWidget(w.id!)"
       >
-        <component :is="widgetMap[w.type]" :widget-id="w.id!" />
+        <component :is="widgetMap[w.type]" :widget-id="w.id!" :initial-x="w.x" :initial-y="w.y" />
       </WidgetWrapper>
 
       <div class="pen"></div>

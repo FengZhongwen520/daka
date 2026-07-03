@@ -11,10 +11,10 @@ const MONTHS_ZH = ['一月','二月','三月','四月','五月','六月','七月
 const WEEKDAYS_ZH = ['日','一','二','三','四','五','六']
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `book-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
-const { x, y, onDragStart } = useDraggable(saved?.x ?? 290, saved?.y ?? 100)
+const { x, y, onDragStart } = useDraggable(saved?.x ?? props.initialX ?? 290, saved?.y ?? props.initialY ?? 100)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 const MONTHS_EN = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER']
 
@@ -22,6 +22,16 @@ const project = ref<Project | null>(null)
 const checkedDates = ref<Set<string>>(new Set())
 const flipped = ref(false)
 const pageRef = ref<HTMLElement>()
+const calSize = ref<'small' | 'medium' | 'large'>(localStorage.getItem('cal-size') as any || 'medium')
+watch(calSize, (v) => localStorage.setItem('cal-size', v))
+
+function toggleSize() {
+  const sizes: ('small' | 'medium' | 'large')[] = ['small', 'medium', 'large']
+  const idx = sizes.indexOf(calSize.value)
+  calSize.value = sizes[(idx + 1) % 3]
+}
+
+const sizeMap = { small: { w: 420, h: 320 }, medium: { w: 580, h: 440 }, large: { w: 720, h: 540 } }
 const nextPageHTML = ref('')
 
 function buildCalendarDays(year: number, month: number): CalendarDay[] {
@@ -131,7 +141,7 @@ async function onToggleDay(day: CalendarDay) {
     <div class="book-drag-bar" @mousedown="onDragStart">
       <span class="drag-dots">⋮⋮</span>
     </div>
-    <div class="book-container">
+    <div class="book-container" :style="{ width: sizeMap[calSize].w + 'px', height: sizeMap[calSize].h + 'px' }">
       <div class="book-base" v-html="nextPageHTML"></div>
       <div class="page" :class="{ flipped }" ref="pageRef">
         <div class="page-content">
@@ -143,6 +153,7 @@ async function onToggleDay(day: CalendarDay) {
             <div class="header-nav-group">
               <button class="header-nav-btn" @click="flipPage(-1)">◂</button>
               <button class="header-nav-btn" @click="flipPage(1)">▸</button>
+              <button class="header-nav-btn header-size-btn" @click="toggleSize" :title="`尺寸: ${calSize}`">{{ calSize === 'small' ? '小' : calSize === 'medium' ? '中' : '大' }}</button>
             </div>
           </div>
           <div class="calendar-grid">
@@ -259,6 +270,7 @@ async function onToggleDay(day: CalendarDay) {
 }
 .header-left { display: flex; align-items: flex-end; gap: 10px; }
 .header-nav-group { display: flex; gap: 4px; }
+.header-size-btn { width: auto; padding: 0 8px; border-radius: 14px; font-size: 11px; font-weight: 700; }
 .header-nav-btn {
   width: 32px; height: 32px;
   border-radius: 50%;

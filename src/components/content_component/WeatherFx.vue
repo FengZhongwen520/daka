@@ -150,11 +150,11 @@ onMounted(() => {
 onUnmounted(() => clearInterval(timer))
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `weather-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? 40)
-const y = ref(savedPos?.y ?? 480)
+const x = ref(savedPos?.x ?? props.initialX ?? 40)
+const y = ref(savedPos?.y ?? props.initialY ?? 480)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0

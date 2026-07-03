@@ -2,15 +2,15 @@
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { getPhoto, savePhoto, deletePhoto } from '../../db'
 
-const props = defineProps<{ position?: 'left' | 'right'; widgetId?: number }>()
+const props = defineProps<{ position?: 'left' | 'right'; widgetId?: number; initialX?: number; initialY?: number }>()
 const photoKey = `photo-${props.widgetId ?? props.position ?? 'default'}`
 
 // Position
 const defaults = props.position === 'left' ? { x: 60, y: 200 } : { x: 820, y: 200 }
 const posKey = `photo-pos-${props.widgetId ?? props.position ?? 'default'}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(saved?.x ?? defaults.x)
-const y = ref(saved?.y ?? defaults.y)
+const x = ref(saved?.x ?? props.initialX ?? defaults.x)
+const y = ref(saved?.y ?? props.initialY ?? defaults.y)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 // Photos array (support both single and multiple)

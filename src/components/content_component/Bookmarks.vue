@@ -187,10 +187,10 @@ async function importAll() {
 function cancelImport() { importMode.value = false }
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `bookmarks-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? 100); const y = ref(savedPos?.y ?? 100)
+const x = ref(savedPos?.x ?? props.initialX ?? 100); const y = ref(savedPos?.y ?? props.initialY ?? 100)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {

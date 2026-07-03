@@ -8,13 +8,13 @@ const MAX_W = 600
 const MIN_H = 180
 const MAX_H = 500
 
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const memoKey = `memo-${props.widgetId ?? 'default'}`
 
 const text = ref('')
 const bgColor = ref(MEMO_COLORS[0])
-const x = ref(100)
-const y = ref(100)
+const x = ref(props.initialX ?? 100)
+const y = ref(props.initialY ?? 100)
 const w = ref(260)
 const h = ref(260)
 const showColors = ref(false)

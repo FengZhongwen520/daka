@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const now = new Date()
 
@@ -15,6 +15,14 @@ export interface WeatherData {
   location: string
 }
 export const weatherData = ref<WeatherData | null>(null)
+
+// Wallpaper
+export const weatherWallpaper = ref(localStorage.getItem('weather-wallpaper') !== 'false')
+export const customWallpaper = ref('')
+
+watch(weatherWallpaper, (v) => {
+  localStorage.setItem('weather-wallpaper', String(v))
+})
 
 export function selectProject(id: number) {
   selectedProjectId.value = id

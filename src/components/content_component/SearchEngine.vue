@@ -111,11 +111,11 @@ function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInp
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🔎 搜索引擎' }
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `searchengine-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? 420)
-const y = ref(savedPos?.y ?? 280)
+const x = ref(savedPos?.x ?? props.initialX ?? 420)
+const y = ref(savedPos?.y ?? props.initialY ?? 280)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0

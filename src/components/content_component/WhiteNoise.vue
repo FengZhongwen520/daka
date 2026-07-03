@@ -311,11 +311,11 @@ onUnmounted(() => {
 })
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `whitenoise-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? 20)
-const y = ref(savedPos?.y ?? 300)
+const x = ref(savedPos?.x ?? props.initialX ?? 20)
+const y = ref(savedPos?.y ?? props.initialY ?? 300)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
@@ -391,7 +391,7 @@ function onDragEnd() {
 <style scoped>
 .whitenoise {
   position: absolute;
-  width: 280px;
+  width: 280px; height: 266px;
   background: #3d2b1f;
   background-image:
     linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 50%, rgba(0,0,0,0.1) 100%),

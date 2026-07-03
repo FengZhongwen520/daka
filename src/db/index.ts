@@ -11,17 +11,18 @@ class DakaDB extends Dexie {
   memos!: Table<Memo, number>
   sites!: Table<SiteItem, number>
   widgets!: Table<WidgetInstance, number>
+  wallpaper!: Table<{ id?: number; dataUrl: string }, number>
 
   constructor() {
     super('daka')
-    this.version(7).stores({
+    this.version(8).stores({
       projects: '++id, name',
       checkins: '++id, [projectId+date]',
       photos: '++id, position',
       memos: '++id, memoKey',
       sites: '++id, widgetId',
-      bookmarkFolders: '++id',
       widgets: '++id, type, projectId',
+      wallpaper: '++id',
     })
   }
 }
@@ -127,6 +128,16 @@ export async function removeWidget(id: number): Promise<void> {
 }
 export async function updateWidgetPos(id: number, x: number, y: number): Promise<void> {
   await db.widgets.update(id, { x, y })
+}
+
+// Wallpaper
+export async function getWallpaper(): Promise<string> {
+  const record = await db.wallpaper.toCollection().first()
+  return record?.dataUrl || ''
+}
+export async function saveWallpaper(dataUrl: string): Promise<void> {
+  await db.wallpaper.clear()
+  if (dataUrl) await db.wallpaper.add({ dataUrl })
 }
 
 // Import / Export

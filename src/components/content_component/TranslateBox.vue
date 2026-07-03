@@ -137,11 +137,11 @@ function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInp
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🌐 翻译' }
 
 // Drag
-const props = defineProps<{ widgetId?: number }>()
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `translate-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? 520)
-const y = ref(savedPos?.y ?? 200)
+const x = ref(savedPos?.x ?? props.initialX ?? 520)
+const y = ref(savedPos?.y ?? props.initialY ?? 200)
 watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0

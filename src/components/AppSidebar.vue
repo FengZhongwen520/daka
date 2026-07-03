@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { selectedProjectId, selectProject } from '../store'
+import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper } from '../store'
 import { getProjects, deleteProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
 import { db } from '../db'
@@ -64,6 +64,33 @@ async function onClearData() {
     selectedProjectId.value = null
     if (projects.value.length > 0) selectProject(projects.value[0].id!)
   } catch { /* cancelled */ }
+}
+
+const wallpaperInput = ref<HTMLInputElement>()
+
+function toggleWeatherWallpaper() {
+  weatherWallpaper.value = !weatherWallpaper.value
+}
+
+function triggerWallpaper() {
+  if (weatherWallpaper.value) {
+    ElMessage.warning('请先关闭天气壁纸开关')
+    return
+  }
+  wallpaperInput.value?.click()
+}
+
+async function onWallpaperChange(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const reader = new FileReader()
+  reader.onload = () => {
+    customWallpaper.value = reader.result as string
+    activeModule.value = ''
+    ElMessage.success('壁纸已更新')
+  }
+  reader.readAsDataURL(file)
+  if (wallpaperInput.value) wallpaperInput.value.value = ''
 }
 
 function toggleModule(name: string) {
@@ -158,6 +185,24 @@ watch(showModal, async (visible) => {
         <p class="bubble-warn">清除当前项目全部数据</p>
         <el-button class="btn-block btn-sm" type="danger" @click="onClearData">确认清除</el-button>
       </div>
+
+      <!-- Wallpaper -->
+      <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
+        <span class="menu-icon">🖼</span>
+        <span class="menu-label">壁纸</span>
+      </div>
+      <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
+        <div class="bubble-row">
+          <span class="bubble-label">天气壁纸</span>
+          <el-switch v-model="weatherWallpaper" size="small" />
+        </div>
+        <div class="bubble-row">
+          <span class="bubble-label">自定义壁纸</span>
+          <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
+        </div>
+        <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
+        <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
+      </div>
     </div>
 
     <!-- Sidebar toggle button -->
@@ -239,7 +284,8 @@ watch(showModal, async (visible) => {
   box-shadow: 0 4px 20px rgba(0,0,0,0.12);
   z-index: 100; display: flex; flex-direction: column; gap: 6px;
 }
-.bubble-row { display: flex; gap: 4px; }
+.bubble-row { display: flex; gap: 4px; align-items: center; justify-content: space-between; }
+.bubble-label { font-size: 0.72rem; color: #555; }
 .sidebar-text-btn {
   flex: 1; padding: 6px 0; border: none; border-radius: 6px;
   background: rgba(0,0,0,0.04); cursor: pointer; font-size: 0.7rem;

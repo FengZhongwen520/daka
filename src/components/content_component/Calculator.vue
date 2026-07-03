@@ -95,10 +95,12 @@ function deleteHistory(index: number) {
 function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🔢 计算器' }
 
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+
 // Drag
 const savedPos = JSON.parse(localStorage.getItem('calc-pos') || 'null')
-const x = ref(savedPos?.x ?? 500)
-const y = ref(savedPos?.y ?? 100)
+const x = ref(savedPos?.x ?? props.initialX ?? 500)
+const y = ref(savedPos?.y ?? props.initialY ?? 100)
 watch([x, y], () => localStorage.setItem('calc-pos', JSON.stringify({ x: x.value, y: y.value })))
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {
@@ -124,7 +126,7 @@ function onButtonClick(btn: string) {
   else { insertText(btn) }
 }
 
-defineProps<{ widgetId?: number }>()
+// props defined above
 </script>
 
 <template>
