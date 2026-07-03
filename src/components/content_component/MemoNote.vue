@@ -35,6 +35,30 @@ function toggleTodo(item: string) {
   text.value = lines.join('\n')
 }
 
+const newTodo = ref('')
+function addTodo() {
+  const v = newTodo.value.trim()
+  if (!v) return
+  text.value = text.value + (text.value ? '\n' : '') + v
+  newTodo.value = ''
+}
+
+const editingIdx = ref(-1)
+const editText = ref('')
+function startEdit(i: number, item: string) {
+  editingIdx.value = i
+  editText.value = item.startsWith('✓ ') ? item.slice(2) : item
+}
+function saveEdit() {
+  if (editingIdx.value < 0) return
+  const lines = text.value.split('\n')
+  const oldLine = lines[editingIdx.value]
+  const prefix = oldLine.startsWith('✓ ') ? '✓ ' : ''
+  lines[editingIdx.value] = prefix + editText.value.trim()
+  text.value = lines.join('\n')
+  editingIdx.value = -1
+}
+
 // Load from DB
 onMounted(async () => {
   const memo = await getMemo(memoKey)
@@ -183,11 +207,13 @@ function enforceLineLimit() {
     <!-- Text -->
     <!-- Todo mode -->
     <div v-if="todoMode" class="memo-todo-list">
-      <div v-for="(item, i) in todoItems" :key="i" class="memo-todo-item" :class="{ done: item.startsWith('✓ ') }" @click="toggleTodo(item)">
-        <span class="memo-todo-check">{{ item.startsWith('✓ ') ? '☑' : '☐' }}</span>
-        <span class="memo-todo-text">{{ item.startsWith('✓ ') ? item.slice(2) : item }}</span>
+      <div v-for="(item, i) in todoItems" :key="i" class="memo-todo-item" :class="{ done: item.startsWith('✓ ') }">
+        <span class="memo-todo-check" @click="toggleTodo(item)">{{ item.startsWith('✓ ') ? '☑' : '☐' }}</span>
+        <input v-if="editingIdx === i" v-model="editText" class="memo-todo-edit" @blur="saveEdit" @keyup.enter="saveEdit" @mousedown.stop />
+        <span v-else class="memo-todo-text" @dblclick="startEdit(i, item)">{{ item.startsWith('✓ ') ? item.slice(2) : item }}</span>
       </div>
-      <div v-if="todoItems.length === 0" class="memo-todo-empty">切换到文本模式添加待办</div>
+      <div v-if="todoItems.length === 0" class="memo-todo-empty">双击文本编辑 · 下方添加新事项</div>
+      <input v-model="newTodo" class="memo-todo-input" placeholder="+ 添加待办" @keyup.enter="addTodo" @mousedown.stop />
     </div>
     <!-- Text mode -->
     <textarea
@@ -269,7 +295,19 @@ function enforceLineLimit() {
 .memo-todo-item.done .memo-todo-text { text-decoration: line-through; color: #bbb; }
 .memo-todo-check { flex-shrink: 0; font-size: 15px; line-height: 1; }
 .memo-todo-text { line-height: 1.4; }
-.memo-todo-empty { font-size: 0.75rem; color: #ccc; text-align: center; padding: 12px 0; }
+.memo-todo-empty { font-size: 0.7rem; color: #ccc; text-align: center; padding: 8px 0; }
+.memo-todo-input {
+  width: 100%; border: 1.5px dashed #ddd; border-radius: 6px;
+  padding: 5px 8px; font-size: 0.75rem; outline: none; font-family: inherit;
+  background: transparent; margin-top: 4px; flex-shrink: 0;
+}
+.memo-todo-input:focus { border-color: #2DD4A8; }
+.memo-todo-input::placeholder { color: #ccc; }
+.memo-todo-edit {
+  flex: 1; border: 1.5px solid #2DD4A8; border-radius: 4px;
+  padding: 1px 4px; font-size: 0.8rem; outline: none; font-family: inherit;
+  background: rgba(255,255,255,0.8);
+}
 
 .memo-colors {
   position: relative;
