@@ -253,7 +253,7 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
   backdrop-filter: blur(20px) saturate(1.5);
   border-radius: 14px; border: 1px solid rgba(255,255,255,0.5);
   box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  z-index: 56; display: flex; flex-direction: column;
+  z-index: 56; display: flex; flex-direction: column; overflow: hidden;
 }
 .layout-3x3 { width: 210px; }
 .layout-4x4 { width: 280px; }
@@ -268,9 +268,9 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 }
 .bm-drag-bar:active { cursor: grabbing; }
 .drag-dots { color: rgba(0,0,0,0.25); font-size: 12px; letter-spacing: 2px; }
-.bm-label { font-size: 0.7rem; font-weight: 700; color: rgba(0,0,0,0.5); cursor: pointer; }
+.bm-label { font-size: 0.8rem; font-weight: 700; color: rgba(0,0,0,0.5); cursor: pointer; }
 .bm-label:hover { color: rgba(0,0,0,0.7); }
-.bm-title-input { width: 100px; font-size: 0.7rem; font-weight: 700; border: 1.5px solid #2DD4A8; border-radius: 4px; padding: 1px 4px; outline: none; font-family: inherit; background: rgba(255,255,255,0.9); }
+.bm-title-input { width: 110px; font-size: 0.8rem; font-weight: 700; border: 1.5px solid #2DD4A8; border-radius: 4px; padding: 1px 4px; outline: none; font-family: inherit; background: rgba(255,255,255,0.9); }
 .bm-layouts { margin-left: auto; display: flex; gap: 1px; }
 .bm-layout-btn { padding: 1px 5px; border-radius: 3px; border: none; background: rgba(0,0,0,0.05); cursor: pointer; font-size: 0.55rem; font-weight: 700; color: rgba(0,0,0,0.35); transition: all 0.15s; font-family: inherit; }
 .bm-layout-btn:hover { background: rgba(0,0,0,0.1); }
@@ -284,9 +284,9 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 .bm-cell:not(.empty):hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 .bm-cell.empty { border: 1.2px dashed rgba(0,0,0,0.1); }
 .bm-link { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 2px; width: 100%; height: 100%; justify-content: center; }
-.bm-favicon { width: 20px; height: 20px; border-radius: 3px; flex-shrink: 0; }
-.bm-initial { width: 20px; height: 20px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.bm-site-name { font-size: 0.55rem; color: #555; font-weight: 500; text-align: center; max-width: 90%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bm-favicon { width: 24px; height: 24px; border-radius: 4px; flex-shrink: 0; }
+.bm-initial { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bm-site-name { font-size: 0.68rem; color: #444; font-weight: 600; text-align: center; max-width: 90%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .bm-add-btn { width: 100%; height: 100%; border: none; background: transparent; font-size: 22px; color: rgba(0,0,0,0.12); cursor: pointer; transition: all 0.2s; font-weight: 300; display: flex; align-items: center; justify-content: center; }
 .bm-add-btn:hover { color: #2DD4A8; transform: scale(1.15); }
 .bm-del-btn { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; border: none; background: rgba(0,0,0,0.3); color: #fff; cursor: pointer; font-size: 7px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
