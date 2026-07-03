@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { getMemo, saveMemo } from '../../db'
 import { MEMO_COLORS } from '../../types'
 
@@ -18,6 +18,22 @@ const y = ref(props.initialY ?? 100)
 const w = ref(260)
 const h = ref(260)
 const showColors = ref(false)
+const todoMode = ref(false)
+
+const todoItems = computed(() => {
+  return text.value.split('\n').filter(l => l.trim())
+})
+
+function toggleTodo(item: string) {
+  const lines = text.value.split('\n')
+  const idx = lines.indexOf(item)
+  if (item.startsWith('✓ ')) {
+    lines[idx] = item.slice(2)
+  } else {
+    lines[idx] = '✓ ' + item
+  }
+  text.value = lines.join('\n')
+}
 
 // Load from DB
 onMounted(async () => {
@@ -25,6 +41,7 @@ onMounted(async () => {
   if (memo) {
     text.value = memo.text
     bgColor.value = memo.bgColor
+    todoMode.value = memo.todo || false
     x.value = memo.x
     y.value = memo.y
     w.value = memo.width
@@ -40,6 +57,7 @@ function schedulePersist() {
     await saveMemo(memoKey, {
       text: text.value,
       bgColor: bgColor.value,
+      todo: todoMode.value,
       x: x.value,
       y: y.value,
       width: w.value,
@@ -48,7 +66,7 @@ function schedulePersist() {
   }, 500)
 }
 
-watch([text, bgColor, x, y, w, h], schedulePersist, { deep: false })
+watch([text, bgColor, x, y, w, h, todoMode], schedulePersist, { deep: false })
 
 // Drag
 let dragging = false
@@ -153,10 +171,27 @@ function enforceLineLimit() {
           ></button>
         </div>
       </div>
+      <button
+        class="memo-todo-toggle"
+        :class="{ active: todoMode }"
+        @click="todoMode = !todoMode"
+        @mousedown.stop
+        :title="todoMode ? '切换文本模式' : '切换待办模式'"
+      >{{ todoMode ? '📝' : '✅' }}</button>
     </div>
 
     <!-- Text -->
+    <!-- Todo mode -->
+    <div v-if="todoMode" class="memo-todo-list">
+      <div v-for="(item, i) in todoItems" :key="i" class="memo-todo-item" :class="{ done: item.startsWith('✓ ') }" @click="toggleTodo(item)">
+        <span class="memo-todo-check">{{ item.startsWith('✓ ') ? '☑' : '☐' }}</span>
+        <span class="memo-todo-text">{{ item.startsWith('✓ ') ? item.slice(2) : item }}</span>
+      </div>
+      <div v-if="todoItems.length === 0" class="memo-todo-empty">切换到文本模式添加待办</div>
+    </div>
+    <!-- Text mode -->
     <textarea
+      v-else
       v-model="text"
       class="memo-textarea"
       placeholder="写点什么..."
@@ -220,6 +255,21 @@ function enforceLineLimit() {
   font-weight: 700;
   color: rgba(0,0,0,0.45);
 }
+.memo-todo-toggle {
+  width: 24px; height: 24px; border: none; background: rgba(0,0,0,0.06);
+  border-radius: 50%; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; flex-shrink: 0;
+}
+.memo-todo-toggle:hover { background: rgba(0,0,0,0.12); }
+.memo-todo-toggle.active { background: rgba(45,212,168,0.2); }
+
+.memo-todo-list { flex: 1; overflow-y: auto; padding: 4px 0; min-height: 0; }
+.memo-todo-item { display: flex; align-items: center; gap: 6px; padding: 4px 0; cursor: pointer; font-size: 0.8rem; color: #555; }
+.memo-todo-item.done .memo-todo-text { text-decoration: line-through; color: #bbb; }
+.memo-todo-check { flex-shrink: 0; font-size: 15px; line-height: 1; }
+.memo-todo-text { line-height: 1.4; }
+.memo-todo-empty { font-size: 0.75rem; color: #ccc; text-align: center; padding: 12px 0; }
 
 .memo-colors {
   position: relative;

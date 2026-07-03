@@ -25,6 +25,7 @@ export interface Memo {
   memoKey: string
   text: string
   bgColor: string
+  todo: boolean
   x: number
   y: number
   width: number
