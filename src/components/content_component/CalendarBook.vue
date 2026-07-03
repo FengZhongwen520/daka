@@ -351,10 +351,12 @@ async function onToggleDay(day: CalendarDay) {
 }
 .day.today { color: #ff6b6b; }
 .day.today::after {
-  content: '•';
+  content: '';
   position: absolute;
-  bottom: 0;
-  font-size: 1.4rem;
+  bottom: 3px; left: 50%; transform: translateX(-50%);
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #ff6b6b;
 }
 
 /* Book base (deep) */
