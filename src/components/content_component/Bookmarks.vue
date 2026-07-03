@@ -5,22 +5,25 @@ import { getSites, addSiteItem, removeSiteItem, clearSites } from '../../db'
 
 interface Site { id?: number; url: string; title: string }
 
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const sites = ref<Site[]>([])
 
 const wid = computed(() => props.widgetId ?? 0)
 onMounted(async () => { sites.value = await getSites(wid.value) })
 
 // Title
-const saved = JSON.parse(localStorage.getItem('bm-title') || 'null')
+const titleKey = `bm-title${props.widgetId != null ? '-' + props.widgetId : ''}`
+const saved = JSON.parse(localStorage.getItem(titleKey) || 'null')
 const title = ref(saved ?? '收藏夹')
-watch(title, (v) => localStorage.setItem('bm-title', JSON.stringify(v)))
+watch(title, (v) => localStorage.setItem(titleKey, JSON.stringify(v)))
 
 // Layout
-const savedLayout = localStorage.getItem('bm-layout') || '3x3'
+const layoutKey = `bm-layout${props.widgetId != null ? '-' + props.widgetId : ''}`
+const savedLayout = localStorage.getItem(layoutKey) || '3x3'
 const layouts = ['3x3', '4x4', '2x4', '4x2'] as const
 type Layout = (typeof layouts)[number]
 const currentLayout = ref<Layout>(savedLayout as Layout)
-watch(currentLayout, (v) => localStorage.setItem('bm-layout', v))
+watch(currentLayout, (v) => localStorage.setItem(layoutKey, v))
 
 const cols = computed(() => parseInt(currentLayout.value[0]))
 const rows = computed(() => parseInt(currentLayout.value[2]))
@@ -187,7 +190,6 @@ async function importAll() {
 function cancelImport() { importMode.value = false }
 
 // Drag
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `bookmarks-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 100); const y = ref(savedPos?.y ?? props.initialY ?? 100)

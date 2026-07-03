@@ -42,27 +42,27 @@ function onAddClick() {
   openAddModal()
 }
 
+function openWelcome() {
+  localStorage.removeItem('dake-welcomed')
+  location.reload()
+}
+
 async function onClearData() {
   try {
-    await ElMessageBox.confirm('确定要清除当前项目的所有数据吗？此操作不可恢复。', '危险操作', {
-      confirmButtonText: '确定清除',
+    await ElMessageBox.confirm('⚠️ 将清除当前项目所有数据及 IndexedDB 全部记录，数据将彻底丢失且不可恢复！确定继续？', '危险操作', {
+      confirmButtonText: '我已知晓，确定清除',
       cancelButtonText: '取消',
       type: 'warning',
     })
-    if (!selectedProjectId.value) return
-    // Clear all tables for current project
-    await db.transaction('rw', db.checkins, db.photos, db.memos, db.sites, db.widgets, async () => {
-      await db.checkins.where('projectId').equals(selectedProjectId.value!).delete()
-      await db.photos.clear()
-      await db.memos.clear()
-      await db.sites.clear()
-      await db.widgets.where('projectId').equals(selectedProjectId.value!).delete()
-    })
-    ElMessage.success('数据已清除')
-    // Reload
-    await loadProjects()
-    selectedProjectId.value = null
-    if (projects.value.length > 0) selectProject(projects.value[0].id!)
+    // Clear ALL IndexedDB data
+    await Promise.all([
+      db.projects.clear(), db.checkins.clear(), db.photos.clear(),
+      db.memos.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
+    ])
+    // Clear all localStorage
+    localStorage.clear()
+    ElMessage.success('全部数据已清除')
+    location.reload()
   } catch { /* cancelled */ }
 }
 
@@ -181,8 +181,9 @@ watch(showModal, async (visible) => {
       </div>
       <div v-if="activeModule === 'help'" class="sidebar-bubble">
         <p class="bubble-title">✊ Dake 哒咔</p>
-        <p class="bubble-desc">桌面打卡应用，帮你养成好习惯。</p>
+        <p class="bubble-desc">浏览器导航页，你的个人工作台。</p>
         <p class="bubble-ver">v2.0 拖拽组件、多项目<br>v1.5 天气、白噪音、番茄钟<br>v1.0 基础打卡、导入导出</p>
+        <el-button class="btn-block btn-sm" @click="openWelcome">重新查看引导</el-button>
       </div>
 
       <!-- Clear -->

@@ -10,14 +10,16 @@ const editingTitle = ref(false)
 const title = ref('🔢 计算器')
 const titleInput = ref<HTMLInputElement>()
 
-// Load history
-const savedHistory = localStorage.getItem('calc-history')
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const historyKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
+
+const savedHistory = localStorage.getItem(historyKey)
 if (savedHistory) {
   try { history.value = JSON.parse(savedHistory) } catch { history.value = [] }
 }
 
 function saveHistory() {
-  localStorage.setItem('calc-history', JSON.stringify(history.value.slice(0, 20)))
+  localStorage.setItem(historyKey, JSON.stringify(history.value.slice(0, 20)))
 }
 
 // Auto-calculate: = or Enter → history, edit after result → preview only
@@ -95,13 +97,12 @@ function deleteHistory(index: number) {
 function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🔢 计算器' }
 
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
-
 // Drag
-const savedPos = JSON.parse(localStorage.getItem('calc-pos') || 'null')
+const posKey = `calc-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
+const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 500)
 const y = ref(savedPos?.y ?? props.initialY ?? 100)
-watch([x, y], () => localStorage.setItem('calc-pos', JSON.stringify({ x: x.value, y: y.value })))
+watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {
   dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value

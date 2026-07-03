@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 
-// Settings — loaded from localStorage, defaults 25/5
-const savedSettings = JSON.parse(localStorage.getItem('pomodoro-settings') || 'null')
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+
+// Settings — with widgetId isolation
+const settingsKey = `pomodoro-settings${props.widgetId != null ? '-' + props.widgetId : ''}`
+const savedSettings = JSON.parse(localStorage.getItem(settingsKey) || 'null')
 const focusMin = ref(savedSettings?.focus ?? 25)
 const breakMin = ref(savedSettings?.break ?? 5)
 const showSettings = ref(false)
@@ -21,12 +24,8 @@ const seconds = computed(() => remaining.value % 60)
 const progress = computed(() => total.value > 0 ? 1 - remaining.value / total.value : 0)
 const circumference = 2 * Math.PI * 70
 
-// Save settings
 function saveSettings() {
-  localStorage.setItem('pomodoro-settings', JSON.stringify({
-    focus: focusMin.value,
-    break: breakMin.value,
-  }))
+  localStorage.setItem(settingsKey, JSON.stringify({ focus: focusMin.value, break: breakMin.value }))
   if (mode.value === 'focus') remaining.value = focusSec.value
   else remaining.value = breakSec.value
   showSettings.value = false
@@ -37,7 +36,6 @@ function openSettings() {
   showSettings.value = true
 }
 
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `pomodoro-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 660)

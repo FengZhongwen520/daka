@@ -22,8 +22,9 @@ const project = ref<Project | null>(null)
 const checkedDates = ref<Set<string>>(new Set())
 const flipped = ref(false)
 const pageRef = ref<HTMLElement>()
-const calSize = ref<'small' | 'medium' | 'large'>(localStorage.getItem('cal-size') as any || 'medium')
-watch(calSize, (v) => localStorage.setItem('cal-size', v))
+const sizeKey = `cal-size${props.widgetId != null ? '-' + props.widgetId : ''}`
+const calSize = ref<'small' | 'medium' | 'large'>((localStorage.getItem(sizeKey) || 'medium') as any)
+watch(calSize, (v) => localStorage.setItem(sizeKey, v))
 
 function toggleSize() {
   const sizes: ('small' | 'medium' | 'large')[] = ['small', 'medium', 'large']
@@ -77,14 +78,30 @@ function buildStaticHTML(year: number, month: number, checkSet: Set<string>): st
   return html
 }
 
+const checkinKey = computed(() => `cal-checkins-${props.widgetId ?? 'default'}`)
+
+function loadLocalCheckIns() {
+  const saved = JSON.parse(localStorage.getItem(checkinKey.value) || '[]')
+  const prefix = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`
+  checkedDates.value = new Set(saved.filter((d: string) => d.startsWith(prefix)))
+}
+
+function saveLocalCheckIn(date: string, checked: boolean) {
+  const saved = JSON.parse(localStorage.getItem(checkinKey.value) || '[]')
+  if (checked) {
+    if (!saved.includes(date)) saved.push(date)
+  } else {
+    const idx = saved.indexOf(date)
+    if (idx >= 0) saved.splice(idx, 1)
+  }
+  localStorage.setItem(checkinKey.value, JSON.stringify(saved))
+}
+
 async function loadCheckIns() {
   if (selectedProjectId.value === null) return
   const projects = await getProjects()
   project.value = projects.find(p => p.id === selectedProjectId.value) || null
-  if (project.value) {
-    const checkins = await getCheckIns(project.value.id!, currentYear.value, currentMonth.value)
-    checkedDates.value = new Set(checkins.map(c => c.date))
-  }
+  loadLocalCheckIns()
 }
 
 const calendarDays = ref<CalendarDay[]>([])
@@ -128,8 +145,9 @@ function flipPage(delta: number) {
 
 async function onToggleDay(day: CalendarDay) {
   if (!day.isCurrentMonth || selectedProjectId.value === null) return
-  if (flipped.value) return // prevent clicks during page flip animation
-  const checked = await toggleCheckIn(selectedProjectId.value, day.date)
+  if (flipped.value) return
+  const checked = !checkedDates.value.has(day.date)
+  saveLocalCheckIn(day.date, checked)
   const next = new Set(checkedDates.value)
   checked ? next.add(day.date) : next.delete(day.date)
   checkedDates.value = next

@@ -26,12 +26,16 @@ const engines: Engine[] = [
 
 const engineMap = Object.fromEntries(engines.map(e => [e.id, e]))
 
+
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const sk = `se${props.widgetId != null ? '-' + props.widgetId : ''}`
+
 // Load persisted state
-const savedDefault = localStorage.getItem('se-default-engine')
+const savedDefault = localStorage.getItem(`${sk}-default-engine`)
 const defaultEngine = ref(savedDefault && engineMap[savedDefault] ? savedDefault : 'baidu')
 const currentEngine = ref(defaultEngine.value)
 
-const savedHistory = localStorage.getItem('se-history')
+const savedHistory = localStorage.getItem(`${sk}-history`)
 const history = ref<SearchRecord[]>([])
 if (savedHistory) {
   try { history.value = JSON.parse(savedHistory) } catch { history.value = [] }
@@ -47,7 +51,7 @@ function saveHistory() {
     if (!seen.has(key)) { seen.add(key); deduped.push(h) }
   }
   history.value = deduped.slice(0, 20)
-  localStorage.setItem('se-history', JSON.stringify(history.value))
+  localStorage.setItem(`${sk}-history`, JSON.stringify(history.value))
 }
 
 const query = ref('')
@@ -56,7 +60,7 @@ const inputRef = ref<HTMLInputElement>()
 function setDefaultEngine(id: string) {
   defaultEngine.value = id
   currentEngine.value = id
-  localStorage.setItem('se-default-engine', id)
+  localStorage.setItem(`${sk}-default-engine`, id)
 }
 
 function selectEngine(id: string) {
@@ -101,9 +105,9 @@ function clearHistory() {
 const historyListRef = ref<HTMLDivElement>()
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem('se-title') || 'null')
+const savedTitle = JSON.parse(localStorage.getItem(`${sk}-title`) || 'null')
 const title = ref(savedTitle ?? '🔎 搜索引擎')
-watch(title, (v) => localStorage.setItem('se-title', JSON.stringify(v)))
+watch(title, (v) => localStorage.setItem(`${sk}-title`, JSON.stringify(v)))
 
 const editingTitle = ref(false)
 const titleInput = ref<HTMLInputElement>()
@@ -111,7 +115,7 @@ function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInp
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🔎 搜索引擎' }
 
 // Drag
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+
 const posKey = `searchengine-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 420)

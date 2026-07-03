@@ -5,19 +5,18 @@ const DAILY_TARGET = 2000 // ml
 const DRINK_AMOUNT = 250   // ml per click
 const IDLE_WARN_MIN = 60   // turn yellow after 60 min no drink
 
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+
 // Load today's data
 const today = new Date().toISOString().slice(0, 10)
-const saved = JSON.parse(localStorage.getItem(`water-${today}`) || 'null')
+const waterKey = `water-${today}${props.widgetId != null ? '-' + props.widgetId : ''}`
+const saved = JSON.parse(localStorage.getItem(waterKey) || 'null')
 const dailyTotal = ref(saved?.total ?? 0)
 const lastDrinkTime = ref(saved?.lastDrink ?? 0)
 const now = ref(Date.now())
 
-// Persist
 function save() {
-  localStorage.setItem(`water-${today}`, JSON.stringify({
-    total: dailyTotal.value,
-    lastDrink: lastDrinkTime.value,
-  }))
+  localStorage.setItem(waterKey, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value }))
 }
 
 // Status
@@ -60,7 +59,6 @@ function drink() {
 }
 
 // Drag
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `water-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 870)

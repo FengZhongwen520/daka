@@ -16,11 +16,13 @@ function hasChinese(text: string): boolean {
 }
 
 // Load persisted state
-const savedDir = localStorage.getItem('tr-direction')
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const tk = `tr${props.widgetId != null ? '-' + props.widgetId : ''}`
+const savedDir = localStorage.getItem(`${tk}-direction`)
 const direction = ref<LangDir>((savedDir === 'zh2en' || savedDir === 'en2zh') ? savedDir : 'en2zh')
-watch(direction, (v) => localStorage.setItem('tr-direction', v))
+watch(direction, (v) => localStorage.setItem(`${tk}-direction`, v))
 
-const savedHistory = localStorage.getItem('tr-history')
+const savedHistory = localStorage.getItem(`${tk}-history`)
 const history = ref<TransRecord[]>([])
 if (savedHistory) {
   try { history.value = JSON.parse(savedHistory) } catch { history.value = [] }
@@ -34,7 +36,7 @@ function saveHistory() {
     if (!seen.has(key)) { seen.add(key); deduped.push(h) }
   }
   history.value = deduped.slice(0, 20)
-  localStorage.setItem('tr-history', JSON.stringify(history.value))
+  localStorage.setItem(`${tk}-history`, JSON.stringify(history.value))
 }
 
 const inputText = ref('')
@@ -127,9 +129,9 @@ async function copyOutput() {
 }
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem('tr-title') || 'null')
+const savedTitle = JSON.parse(localStorage.getItem(`${tk}-title`) || 'null')
 const title = ref(savedTitle ?? '🌐 翻译')
-watch(title, (v) => localStorage.setItem('tr-title', JSON.stringify(v)))
+watch(title, (v) => localStorage.setItem(`${tk}-title`, JSON.stringify(v)))
 
 const editingTitle = ref(false)
 const titleInput = ref<HTMLInputElement>()
@@ -137,7 +139,6 @@ function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInp
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🌐 翻译' }
 
 // Drag
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `translate-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 520)
