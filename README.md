@@ -1,5 +1,123 @@
-# Vue 3 + TypeScript + Vite
+# Dake 哒咔 — 浏览器导航页
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+个性化浏览器起始页 / 新标签页，集成习惯打卡、网址导航、天气桌面、番茄钟、白噪音等丰富小组件，自由拖拽布局，打造专属工作台。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## 技术栈
+
+- **Vue 3** + TypeScript + `<script setup>`
+- **Vite** 构建
+- **Element Plus** UI 组件库
+- **Dexie.js** IndexedDB 数据持久化
+- **Web Audio API** 环境音合成
+- **Canvas API** 天气粒子特效
+- 纯前端，零后端依赖
+
+## 快速开始
+
+```bash
+npm install
+npm run dev
+```
+
+浏览器打开后设置为新标签页即可。
+
+## 项目结构
+
+```
+daka/
+├── public/daka.png
+└── src/
+    ├── main.ts
+    ├── App.vue
+    ├── style.css                   # 全局样式 + 天气背景 CSS
+    ├── store/index.ts              # 全局状态（项目/月份/天气数据）
+    ├── types/index.ts
+    ├── db/index.ts                 # IndexedDB 7 张表（Dexie.js）
+    ├── utils/                      # 日期工具、导入导出
+    ├── composables/                # useDraggable
+    └── components/
+        ├── AppSidebar.vue          # 侧边栏（Logo + 菜单 + 收缩）
+        ├── AppModal.vue            # 项目弹窗（Element Plus Dialog）
+        ├── AppCalendar.vue         # 主容器（天气特效 + 动态小组件渲染）
+        └── calendar/               # 小组件目录
+            ├── registry.ts         # 组件注册表（名称/图标/描述/默认位置）
+            ├── WidgetWrapper.vue   # 组件包装（右键菜单、provide widgetId）
+            ├── CalendarBook.vue    # 3D 翻页打卡日历
+            ├── Bookmarks.vue       # 收藏夹网址导航网格
+            ├── WeatherFx.vue       # 天气（卡片 + 窗户视图）
+            ├── PomodoroTimer.vue   # 番茄钟
+            ├── WhiteNoise.vue      # 白噪音收音机
+            ├── WaterTracker.vue    # 饮水追踪
+            ├── PhotoFrame.vue      # 照片框（单张/多张轮播）
+            ├── MemoNote.vue        # 可拖拽缩放便签
+            ├── StickyNote.vue      # 黄色便利贴
+            └── Calculator.vue      # 计算器
+```
+
+## 核心设计
+
+### 组件化工作台
+
+主容器 AppCalendar 是一个可自由布局的画布。所有小组件通过 `<component :is>` 动态渲染，用户可以：
+
+- 点击 `＋` 从画廊自由添加/移除组件
+- 拖拽 `⋮⋮` 手柄移动任意组件位置
+- 右键组件弹出删除菜单
+- 切换项目获得完全独立的工作台布局
+
+### 网址导航
+
+收藏夹组件是核心导航功能：
+
+- 网格展示网站图标和名称，点击跳转
+- 4 种布局切换（3×3 / 4×4 / 2×4 / 4×2）
+- 支持导入浏览器收藏夹 HTML 文件（自动解析目录结构）
+- 图标自动获取（Google Favicon API → 首字母回退）
+- 每个收藏夹实例数据独立
+
+### 天气桌面
+
+根据实时天气自动变换背景 + 全屏粒子特效（Canvas）：
+
+| 天气 | 背景效果 | 粒子 |
+|------|---------|------|
+| ☀️ 晴 | 蓝天阳光渐变 | — |
+| ⛅ 多云 | 蓝天 + 白云 | 6 朵云飘过 |
+| 🌫 雾霾 | 灰白雾化 | 35 个雾团 |
+| 🌧 雨 | 深蓝灰 | 250 滴雨 |
+| ❄️ 雪 | 浅蓝白 | 100 片雪花 |
+| ⛈ 风暴 | 暗黑 | 400 滴暴雨 + 闪电 |
+
+天气每 10 分钟自动刷新。
+
+### 数据隔离
+
+| 层级 | 机制 |
+|------|------|
+| 项目间 | Widgets 表按 `projectId` 索引隔离 |
+| 组件间 | 每个 widget 实例有唯一 `widgetId`，所有数据 key 包含此 ID |
+| 切换项目 | `watch(selectedProjectId)` → 销毁重建全部组件 |
+
+## 全部组件
+
+| 组件 | 说明 |
+|------|------|
+| 📅 日历书 | 3D 翻页打卡，中文月份，钢笔圆圈特效 |
+| 📑 收藏夹 | 网址导航网格，支持导入浏览器书签 |
+| 🌤 天气 | 实时天气 + 全屏桌面特效，每 10 分钟刷新 |
+| 🍅 番茄钟 | 25+5 倒计时，可配置时长，专注/休息双模式 |
+| 📻 白噪音 | 6 种 Web Audio 合成环境音，复古收音机外观 |
+| 💧 饮水 | 每日饮水追踪，2000ml 目标，闲置提醒 |
+| 🖼 照片框 | 单张/多张轮播（4 秒切换） |
+| 📝 便签 | 自由拖拽缩放，5 色，100 行 |
+| 📌 便利贴 | 黄色自由编辑文本 |
+| 🔢 计算器 | `=` 实时计算，历史记录，展开键盘 |
+
+## 使用说明
+
+- **导航**：收藏夹组件添加常用网址，点击跳转
+- **打卡**：日历组件点击日期格子
+- **布局**：`＋` 添加组件，拖拽 `⋮⋮` 移动，右键删除
+- **项目**：侧边栏展开 → 项目菜单 → 切换/新增（最多 3 个）
+- **数据**：导出/导入 JSON 备份，清除数据二次确认
+- **设为首页**：浏览器设置中将新标签页指向 `http://localhost:5173`

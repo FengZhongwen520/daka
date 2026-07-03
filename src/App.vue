@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, provide } from 'vue'
 import AppSidebar from './components/AppSidebar.vue'
-import AppCalendar from './components/AppCalendar.vue'
+import AppCalendar from './components/AppContent.vue'
 import AppModal from './components/AppModal.vue'
 
 const showModal = ref(false)
