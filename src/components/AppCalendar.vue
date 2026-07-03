@@ -15,6 +15,8 @@ import WaterTracker from './calendar/WaterTracker.vue'
 import WhiteNoise from './calendar/WhiteNoise.vue'
 import Bookmarks from './calendar/Bookmarks.vue'
 import MemoNote from './calendar/MemoNote.vue'
+import Calculator from './calendar/Calculator.vue'
+import SearchEngine from './calendar/SearchEngine.vue'
 import WidgetWrapper from './calendar/WidgetWrapper.vue'
 
 const widgetMap: Record<string, any> = {
@@ -27,6 +29,8 @@ const widgetMap: Record<string, any> = {
   whitenoise: markRaw(WhiteNoise),
   bookmarks: markRaw(Bookmarks),
   memo: markRaw(MemoNote),
+  calculator: markRaw(Calculator),
+  searchengine: markRaw(SearchEngine),
 }
 
 // Widget instances
