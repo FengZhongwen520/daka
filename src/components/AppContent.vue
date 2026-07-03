@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, markRaw } from 'vue'
 import { selectedProjectId, weatherData, weatherWallpaper, customWallpaper } from '../store/index.ts'
-import { getWidgets, addWidget, removeWidget, updateWidgetPos, getWallpaper } from '../db/index.ts'
-import { WIDGETS, DEFAULT_WIDGETS } from './content_component/registry.ts'
+import { getWidgets, addWidget, removeWidget, getWallpaper, saveWallpaper } from '../db/index.ts'
+import { WIDGETS } from './content_component/registry.ts'
 import type { WidgetInstance } from '../db/index.ts'
 
 // All widget components
@@ -90,10 +90,7 @@ onMounted(async () => {
 })
 
 watch(customWallpaper, async (v) => {
-  if (v) {
-    const { saveWallpaper } = await import('../db/index.ts')
-    await saveWallpaper(v)
-  }
+  if (v) await saveWallpaper(v)
 })
 
 // Weather effects

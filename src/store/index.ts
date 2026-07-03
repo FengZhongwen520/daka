@@ -2,7 +2,10 @@ import { ref, watch } from 'vue'
 
 const now = new Date()
 
-export const selectedProjectId = ref<number | null>(parseInt(localStorage.getItem('last-project') || '') || null)
+export const selectedProjectId = ref<number | null>(null)
+// Restore last project on module load
+const lastId = localStorage.getItem('last-project')
+if (lastId) selectedProjectId.value = parseInt(lastId) || null
 export const currentYear = ref(now.getFullYear())
 export const currentMonth = ref(now.getMonth() + 1)
 

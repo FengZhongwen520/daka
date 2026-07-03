@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted } from 'vue'
-import { getPhoto, savePhoto, deletePhoto } from '../../db'
+import { getPhoto } from '../../db'
 
 const props = defineProps<{ position?: 'left' | 'right'; widgetId?: number; initialX?: number; initialY?: number }>()
 const photoKey = `photo-${props.widgetId ?? props.position ?? 'default'}`

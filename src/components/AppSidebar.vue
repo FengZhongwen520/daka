@@ -21,7 +21,8 @@ const currentProject = computed(() => projects.value.find(p => p.id === selected
 async function loadProjects() {
   projects.value = await getProjects()
   // Restore last-used project, or fallback to first
-  const lastId = parseInt(localStorage.getItem('last-project') || '')
+  const saved = localStorage.getItem('last-project')
+  const lastId = saved ? parseInt(saved) : 0
   if (lastId && projects.value.some(p => p.id === lastId)) {
     selectProject(lastId)
   } else if (!selectedProjectId.value && projects.value.length > 0) {
@@ -181,6 +182,24 @@ watch(showModal, async (visible) => {
         <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
       </div>
 
+            <!-- Wallpaper -->
+      <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
+        <span class="menu-icon">🖼</span>
+        <span class="menu-label">壁纸</span>
+      </div>
+      <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
+        <div class="bubble-row">
+          <span class="bubble-label">天气壁纸</span>
+          <el-switch :model-value="weatherWallpaper" size="small" @change="toggleWeatherWallpaper" />
+        </div>
+        <div class="bubble-row">
+          <span class="bubble-label">自定义壁纸</span>
+          <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
+        </div>
+        <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
+        <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
+      </div>
+
       <!-- Help -->
       <div class="sidebar-menu-item" :class="{ active: activeModule === 'help' }" @click="toggleModule('help')">
         <span class="menu-icon">❓</span>
@@ -203,23 +222,7 @@ watch(showModal, async (visible) => {
         <el-button class="btn-block btn-sm" type="danger" @click="onClearData">确认清除</el-button>
       </div>
 
-      <!-- Wallpaper -->
-      <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
-        <span class="menu-icon">🖼</span>
-        <span class="menu-label">壁纸</span>
-      </div>
-      <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
-        <div class="bubble-row">
-          <span class="bubble-label">天气壁纸</span>
-          <el-switch v-model="weatherWallpaper" size="small" />
-        </div>
-        <div class="bubble-row">
-          <span class="bubble-label">自定义壁纸</span>
-          <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
-        </div>
-        <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
-        <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
-      </div>
+
     </div>
 
     <!-- Sidebar toggle button -->

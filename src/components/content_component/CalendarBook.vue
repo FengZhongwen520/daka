@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
 import { selectedProjectId, currentYear, currentMonth, navigateMonth } from '../../store'
-import { getProjects, getCheckIns, toggleCheckIn } from '../../db'
+import { getProjects } from '../../db'
 import { getDaysInMonth, getFirstDayOfMonth, formatDate, todayStr } from '../../utils/date'
 import { useDraggable } from '../../composables/useDraggable'
 import type { Project } from '../../types'

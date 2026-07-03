@@ -80,8 +80,6 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') { input.value = ''; result.value = '' }
 }
 
-function clearInput() { input.value = ''; result.value = '' }
-
 function restoreFromHistory(item: { expr: string; result: string }) {
   input.value = item.expr
   result.value = item.result

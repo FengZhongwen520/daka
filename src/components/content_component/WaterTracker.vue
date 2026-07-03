@@ -112,7 +112,7 @@ const waveHeight = computed(() => progress.value * 80)
           <path d="M27 35 L32 118 Q32 126 40 126 L80 126 Q88 126 88 118 L93 35 Z" />
         </clipPath>
         <rect
-          x="25" y="0" width="70" height="130"
+          x="25" width="70" height="130"
           fill="url(#water-grad)"
           clip-path="url(#cup-clip)"
           :y="125 - waveHeight"
@@ -120,7 +120,7 @@ const waveHeight = computed(() => progress.value * 80)
         />
         <!-- Wave -->
         <rect
-          x="25" y="0" width="140" height="6"
+          x="25" width="140" height="6"
           fill="rgba(255,255,255,0.3)"
           clip-path="url(#cup-clip)"
           :y="125 - waveHeight - 3"

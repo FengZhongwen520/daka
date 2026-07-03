@@ -93,16 +93,6 @@ function getWeatherLabel(code: number): string {
   return '雷暴'
 }
 
-async function reverseGeocode(lat: number, lon: number): Promise<string> {
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh`)
-    const data = await res.json()
-    return data.address?.city || data.address?.town || data.address?.county || data.address?.state || `${lat.toFixed(2)},${lon.toFixed(2)}`
-  } catch {
-    return `${lat.toFixed(2)},${lon.toFixed(2)}`
-  }
-}
-
 function mapWeatherText(text: string): number {
   if (text.includes('晴')) return 0
   if (text.includes('多云') || text.includes('少云')) return 2

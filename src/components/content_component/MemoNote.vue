@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { getMemo, saveMemo } from '../../db'
 import { MEMO_COLORS } from '../../types'
 
@@ -79,6 +79,7 @@ function schedulePersist() {
   clearTimeout(persistTimer.value)
   persistTimer.value = setTimeout(async () => {
     await saveMemo(memoKey, {
+      memoKey,
       text: text.value,
       bgColor: bgColor.value,
       todo: todoMode.value,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue'
+import { ref, watch } from 'vue'
 
 interface SearchRecord {
   query: string
@@ -55,7 +55,6 @@ function saveHistory() {
 }
 
 const query = ref('')
-const inputRef = ref<HTMLInputElement>()
 
 function setDefaultEngine(id: string) {
   defaultEngine.value = id
@@ -102,7 +101,6 @@ function clearHistory() {
 }
 
 // Scrollable history — show ~4 items
-const historyListRef = ref<HTMLDivElement>()
 
 // Title
 const savedTitle = JSON.parse(localStorage.getItem(`${sk}-title`) || 'null')
