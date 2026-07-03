@@ -2,7 +2,7 @@ import { ref, watch } from 'vue'
 
 const now = new Date()
 
-export const selectedProjectId = ref<number | null>(null)
+export const selectedProjectId = ref<number | null>(parseInt(localStorage.getItem('last-project') || '') || null)
 export const currentYear = ref(now.getFullYear())
 export const currentMonth = ref(now.getMonth() + 1)
 
@@ -26,6 +26,7 @@ watch(weatherWallpaper, (v) => {
 
 export function selectProject(id: number) {
   selectedProjectId.value = id
+  localStorage.setItem('last-project', String(id))
 }
 
 export function navigateMonth(delta: number) {

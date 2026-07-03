@@ -20,7 +20,11 @@ const currentProject = computed(() => projects.value.find(p => p.id === selected
 
 async function loadProjects() {
   projects.value = await getProjects()
-  if (!selectedProjectId.value && projects.value.length > 0) {
+  // Restore last-used project, or fallback to first
+  const lastId = parseInt(localStorage.getItem('last-project') || '')
+  if (lastId && projects.value.some(p => p.id === lastId)) {
+    selectProject(lastId)
+  } else if (!selectedProjectId.value && projects.value.length > 0) {
     selectProject(projects.value[0].id!)
   }
 }
@@ -69,6 +73,9 @@ async function onClearData() {
 const wallpaperInput = ref<HTMLInputElement>()
 
 function toggleWeatherWallpaper() {
+  if (!weatherWallpaper.value) {
+    ElMessage.warning('需要开启天气组件才能使用天气壁纸')
+  }
   weatherWallpaper.value = !weatherWallpaper.value
 }
 
