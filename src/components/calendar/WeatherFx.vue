@@ -103,33 +103,40 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
   }
 }
 
+function mapWeatherText(text: string): number {
+  if (text.includes('晴')) return 0
+  if (text.includes('多云') || text.includes('少云')) return 2
+  if (text.includes('阴')) return 3
+  if (text.includes('雾') || text.includes('霾')) return 45
+  if (text.includes('小雨') || text.includes('阵雨')) return 53
+  if (text.includes('中雨')) return 63
+  if (text.includes('大雨') || text.includes('暴雨')) return 65
+  if (text.includes('雷')) return 95
+  if (text.includes('雪') || text.includes('小雪')) return 73
+  if (text.includes('大雪') || text.includes('暴雪')) return 75
+  return 2
+}
+
 async function fetchWeather() {
   try {
     loading.value = true
     error.value = ''
-    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
-    })
-    const { latitude, longitude } = pos.coords
-    const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,relative_humidity_2m,wind_speed_10m&timezone=auto`
-    )
+
+    const res = await fetch('https://uapis.cn/api/v1/misc/weather?lang=zh')
+    if (!res.ok) throw new Error('API error')
     const data = await res.json()
-    const current = data.current
-    const loc = await reverseGeocode(latitude, longitude)
+
     weatherData.value = {
-      temp: current.temperature_2m,
-      code: current.weather_code,
-      humidity: current.relative_humidity_2m,
-      windSpeed: current.wind_speed_10m,
-      location: loc,
+      temp: data.temperature,
+      code: mapWeatherText(data.weather || '多云'),
+      humidity: data.humidity,
+      windSpeed: parseInt(data.wind_power) || 0,
+      location: data.city || data.district || data.province || '',
     }
-    lastUpdate.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    lastUpdate.value = data.report_time || new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   } catch (e: any) {
-    error.value = e.message || '获取天气失败'
-    if (!weatherData.value) {
-      weatherData.value = { temp: 22, code: 0, humidity: 50, windSpeed: 5, location: '未知位置' }
-    }
+    error.value = '获取天气失败'
+    weatherData.value = null
   } finally {
     loading.value = false
   }
@@ -175,7 +182,6 @@ function onDragEnd() {
     <div class="wf-drag-bar" @mousedown="onDragStart">
       <span class="drag-dots">⋮⋮</span>
       <span class="wf-label">🌤 天气</span>
-      <span v-if="lastUpdate && viewMode === 'card'" class="wf-time">{{ lastUpdate }}</span>
       <div class="wf-actions">
         <button class="wf-toggle" :class="{ active: testMode }" @mousedown.stop="toggleTestMode" :title="testMode ? '关闭测试' : '测试天气'">
           🧪
@@ -189,7 +195,11 @@ function onDragEnd() {
     <!-- Card view -->
     <div v-if="viewMode === 'card'" class="wf-body">
       <div v-if="loading && !weatherData" class="wf-loading">加载中...</div>
-      <div v-else-if="error && !weatherData" class="wf-error">{{ error }}</div>
+      <div v-else-if="error" class="wf-error-state">
+        <span class="wf-error-icon">🌧</span>
+        <span>天气获取失败</span>
+        <button class="wf-retry-btn" @click="fetchWeather">重试</button>
+      </div>
       <template v-else-if="weatherData">
         <div class="wf-main" :class="{ 'test-active': testMode }" @click="cycleTestWeather">
           <span class="wf-icon">{{ getWeatherIcon(weatherData.code) }}</span>
@@ -198,7 +208,7 @@ function onDragEnd() {
         </div>
         <div class="wf-info">
           <div class="wf-condition">{{ getWeatherLabel(weatherData.code) }}</div>
-          <div class="wf-location">📍 {{ weatherData.location }}</div>
+          <div class="wf-location">📍 {{ weatherData.location }} · {{ lastUpdate }}</div>
           <div class="wf-details">
             <span>💧 {{ weatherData.humidity }}%</span>
             <span>💨 {{ weatherData.windSpeed }} km/h</span>
@@ -278,7 +288,7 @@ function onDragEnd() {
 .wf-drag-bar:active { cursor: grabbing; }
 .drag-dots { color: rgba(0,0,0,0.25); font-size: 14px; letter-spacing: 3px; }
 .wf-label { font-size: 0.75rem; font-weight: 700; color: rgba(0,0,0,0.5); }
-.wf-time { font-size: 0.65rem; color: rgba(0,0,0,0.35); }
+.wf-time { font-size: 0.65rem; color: rgba(0,0,0,0.35); margin-left: auto; }
 .wf-actions { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .wf-toggle {
   width: 22px; height: 22px;
@@ -303,8 +313,18 @@ function onDragEnd() {
 }
 
 .wf-body { padding: 10px 14px 14px; }
-.wf-loading, .wf-error { font-size: 0.8rem; color: #999; text-align: center; padding: 8px 0; }
-.wf-error { color: #e74c3c; }
+.wf-loading { font-size: 0.8rem; color: #999; text-align: center; padding: 8px 0; }
+.wf-error-state {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 0; color: #999; font-size: 0.78rem;
+}
+.wf-error-icon { font-size: 28px; opacity: 0.5; }
+.wf-retry-btn {
+  margin-top: 4px; padding: 4px 14px; border: 1px solid #ddd;
+  border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.7rem;
+  color: #666; transition: all 0.2s; font-family: inherit;
+}
+.wf-retry-btn:hover { border-color: #2DD4A8; color: #2DD4A8; }
 .wf-main { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; position: relative; }
 .wf-main.test-active {
   cursor: pointer;

@@ -18,6 +18,7 @@ import MemoNote from './calendar/MemoNote.vue'
 import Calculator from './calendar/Calculator.vue'
 import SearchEngine from './calendar/SearchEngine.vue'
 import TranslateBox from './calendar/TranslateBox.vue'
+import Fan from './calendar/Fan.vue'
 import WidgetWrapper from './calendar/WidgetWrapper.vue'
 
 const widgetMap: Record<string, any> = {
@@ -33,6 +34,7 @@ const widgetMap: Record<string, any> = {
   calculator: markRaw(Calculator),
   searchengine: markRaw(SearchEngine),
   translate: markRaw(TranslateBox),
+  fan: markRaw(Fan),
 }
 
 // Widget instances

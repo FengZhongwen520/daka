@@ -19,6 +19,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'calculator', name: '计算器', icon: '🔢', desc: '科学计算 + 历史记录', defaultPos: { x: 500, y: 100 } },
   { type: 'searchengine', name: '搜索引擎', icon: '🔎', desc: '多引擎搜索 + 历史记录', defaultPos: { x: 420, y: 280 } },
   { type: 'translate', name: '翻译', icon: '🌐', desc: '中英互译 + 语言检测', defaultPos: { x: 520, y: 200 } },
+  { type: 'fan', name: '电风扇', icon: '🌀', desc: '3档调速桌面风扇', defaultPos: { x: 600, y: 120 } },
 ]
 
 export const DEFAULT_WIDGETS = ['calendar', 'sticky', 'photoframe', 'weather']
