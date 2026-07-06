@@ -20,6 +20,8 @@ const currentProject = computed(() => projects.value.find(p => p.id === selected
 
 async function loadProjects() {
   projects.value = await getProjects()
+  // Auto-expand sidebar if no projects
+  if (projects.value.length === 0) collapsed.value = false
   // Restore last-used project, or fallback to first
   const saved = localStorage.getItem('last-project')
   const lastId = saved ? parseInt(saved) : 0

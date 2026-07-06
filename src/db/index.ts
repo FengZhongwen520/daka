@@ -146,18 +146,34 @@ export async function exportAll(): Promise<ExportData> {
   const checkins = await db.checkins.toArray()
   const photos = await db.photos.toArray()
   const memos = await db.memos.toArray()
-  return { version: 1, exportedAt: new Date().toISOString(), projects, checkins, photos, memos }
+  const sites = await db.sites.toArray()
+  const widgets = await db.widgets.toArray()
+  const wallpaperRows = await db.wallpaper.toArray()
+  // Include all localStorage data
+  const lsData: Record<string, string> = {}
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (key) lsData[key] = localStorage.getItem(key) || ''
+  }
+  return { version: 2, exportedAt: new Date().toISOString(), projects, checkins, photos, memos, sites, widgets, wallpaper: wallpaperRows, lsData }
 }
 
 export async function importAll(data: ExportData): Promise<void> {
-  await db.transaction('rw', db.projects, db.checkins, db.photos, db.memos, async () => {
-    await db.checkins.clear()
-    await db.projects.clear()
-    await db.photos.clear()
-    await db.memos.clear()
-    for (const p of data.projects) await db.projects.add(p)
-    for (const c of data.checkins) await db.checkins.add(c)
-    if (data.photos) for (const ph of data.photos) await db.photos.add(ph)
-    if (data.memos) for (const m of data.memos) await db.memos.add(m)
-  })
+  await Promise.all([
+    db.checkins.clear(), db.projects.clear(), db.photos.clear(),
+    db.memos.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
+  ])
+  for (const p of data.projects) await db.projects.add(p)
+  for (const c of data.checkins) await db.checkins.add(c)
+  if (data.photos) for (const ph of data.photos) await db.photos.add(ph)
+  if (data.memos) for (const m of data.memos) await db.memos.add(m)
+  if (data.sites) for (const s of data.sites) await db.sites.add(s)
+  if (data.widgets) for (const w of data.widgets) await db.widgets.add(w)
+  if (data.wallpaper) for (const wp of data.wallpaper) await db.wallpaper.add(wp)
+  // Restore localStorage data
+  if (data.lsData) {
+    for (const [key, val] of Object.entries(data.lsData)) {
+      try { localStorage.setItem(key, val) } catch { /* skip */ }
+    }
+  }
 }

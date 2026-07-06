@@ -42,6 +42,10 @@ export interface ExportData {
   checkins: CheckIn[]
   photos: Photo[]
   memos: Memo[]
+  sites: any[]
+  widgets: any[]
+  wallpaper: any[]
+  lsData?: Record<string, string>
 }
 
 export const PRESET_COLORS = [

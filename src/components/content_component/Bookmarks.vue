@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSites, addSiteItem, removeSiteItem, clearSites } from '../../db'
+import FaviconImg from '../FaviconImg.vue'
 
 interface Site { id?: number; url: string; title: string }
 
@@ -77,20 +78,12 @@ async function submitAdd() {
 }
 async function removeSite(id: number) { await removeSiteItem(id); sites.value = await getSites(wid.value) }
 
-// Favicon
-function faviconUrl(url: string) {
-  try { return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(url.startsWith('http')?url:'https://'+url)}&size=48` } catch { return '' }
-}
+// Favicon fallback helpers
 function siteInitial(t: string) { return (t || '?').charAt(0).toUpperCase() }
 function initialColor(t: string) {
   const colors = ['#ff6b6b','#2DD4A8','#3B82F6','#F59E0B','#8B5CF6','#EC4899','#06B6D4']
   let hash = 0; for (let i = 0; i < t.length; i++) hash = t.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
-}
-function onImgError(e: Event) {
-  const img = e.target as HTMLImageElement; img.style.display = 'none'
-  const el = img.parentElement?.querySelector('.bm-initial') as HTMLElement
-  if (el) el.style.display = 'flex'
 }
 
 // Title edit
@@ -222,8 +215,7 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
       <div v-for="(slot, i) in displaySlots" :key="i" class="bm-cell" :class="{ empty: !slot }">
         <template v-if="slot">
           <a :href="slot.url" target="_blank" class="bm-link" @click.stop :title="slot.title">
-            <img :src="faviconUrl(slot.url)" class="bm-favicon" @error="onImgError" />
-            <span class="bm-initial" :style="{ background: initialColor(slot.title), display: 'none' }">{{ siteInitial(slot.title) }}</span>
+            <FaviconImg :url="slot.url" :fallback-text="siteInitial(slot.title)" :fallback-color="initialColor(slot.title)" />
             <span class="bm-site-name">{{ slot.title }}</span>
           </a>
           <button class="bm-del-btn" @click.stop="removeSite(slot.id!)">✕</button>
@@ -319,22 +311,11 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 .bm-cell:not(.empty):hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 .bm-cell.empty { border: 1.2px dashed rgba(0,0,0,0.1); }
 .bm-link { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 2px; width: 100%; height: 100%; justify-content: center; }
-.bm-favicon { width: 24px; height: 24px; border-radius: 4px; flex-shrink: 0; }
-.bm-initial { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .bm-site-name { font-size: 0.68rem; color: #444; font-weight: 600; text-align: center; max-width: 90%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .bm-add-btn { width: 100%; height: 100%; border: none; background: transparent; font-size: 22px; color: rgba(0,0,0,0.12); cursor: pointer; transition: all 0.2s; font-weight: 300; display: flex; align-items: center; justify-content: center; }
 .bm-add-btn:hover { color: #2DD4A8; transform: scale(1.15); }
 .bm-del-btn { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; border: none; background: rgba(0,0,0,0.3); color: #fff; cursor: pointer; font-size: 7px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
 .bm-cell:hover .bm-del-btn { opacity: 1; }
-
-/* Add panel overlay */
-.bm-add-overlay {
-  position: absolute; inset: 0; z-index: 10;
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(8px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding-top: 40px;
-}
 .bm-add-panel {
   width: 100%; max-height: 100%; display: flex; flex-direction: column;
   padding: 0 14px 14px;
