@@ -254,7 +254,7 @@ async function onToggleDay(day: CalendarDay) {
 .page.flipped { transform: rotateY(-170deg); }
 
 .page-content {
-  padding: 20px 30px;
+  padding: 20px 30px 0px;
   width: 100%;
   height: 100%;
   display: flex;
