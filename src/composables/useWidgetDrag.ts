@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { useDraggable } from './useDraggable'
+import { updateWidgetPos } from '../db'
 
 /**
  * 组合 useDraggable + 位置持久化（localStorage + IndexedDB）
@@ -21,7 +22,7 @@ export function useWidgetDrag(
   watch([x, y], () => {
     localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value }))
     if (syncToDB && props.widgetId != null) {
-      import('../db').then(m => m.updateWidgetPos(props.widgetId!, x.value, y.value)).catch(() => {})
+      updateWidgetPos(props.widgetId!, x.value, y.value)
     }
   })
 

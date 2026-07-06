@@ -20,16 +20,21 @@ const emit = defineEmits<{
 // Editable title
 const editing = ref(false)
 const titleInput = ref<HTMLInputElement>()
+const draftTitle = ref('')
 
 function startEdit() {
   if (!props.editable) return
+  draftTitle.value = props.title || ''
   editing.value = true
   nextTick(() => titleInput.value?.focus())
 }
 
 function saveEdit() {
   editing.value = false
-  if (!props.title?.trim()) {
+  const trimmed = draftTitle.value.trim()
+  if (trimmed) {
+    emit('update:title', trimmed)
+  } else {
     emit('update:title', props.titlePlaceholder)
   }
 }
@@ -52,7 +57,7 @@ function onTitleKeydown(e: KeyboardEvent) {
     <input
       v-if="editable && editing"
       ref="titleInput"
-      :value="title"
+      v-model="draftTitle"
       class="drag-bar__title-input"
       @blur="saveEdit"
       @keydown="onTitleKeydown"

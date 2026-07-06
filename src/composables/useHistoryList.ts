@@ -1,4 +1,4 @@
-import { ref, watch } from 'vue'
+import { shallowRef } from 'vue'
 
 /**
  * 历史记录管理 composable
@@ -11,7 +11,7 @@ export function useHistoryList<T>(
   dedupKeyFn: (item: T) => string,
   maxSize = 20,
 ) {
-  const history = ref<T[]>([])
+  const history = shallowRef<T[]>([])
 
   // Load
   const saved = localStorage.getItem(storageKey)

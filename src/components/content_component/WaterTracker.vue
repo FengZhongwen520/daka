@@ -144,11 +144,11 @@ const waveHeight = computed(() => progress.value * 80)
   transition: box-shadow 0.2s, background 0.5s;
 }
 .water-tracker.idle { background: #fffef5; }
+.water-tracker.idle :deep(.drag-bar--header) { background: rgba(240, 200, 0, 0.15); }
 .water-tracker:hover {
   box-shadow: 2px 2px 0 #ddd, 8px 12px 24px rgba(0,0,0,0.25);
 }
 
-/* Drag bar */
 /* Body */
 .water-body {
   position: relative;
