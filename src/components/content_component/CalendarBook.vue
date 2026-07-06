@@ -22,17 +22,7 @@ const project = ref<Project | null>(null)
 const checkedDates = ref<Set<string>>(new Set())
 const flipped = ref(false)
 const pageRef = ref<HTMLElement>()
-const sizeKey = `cal-size${props.widgetId != null ? '-' + props.widgetId : ''}`
-const calSize = ref<'small' | 'medium' | 'large'>((localStorage.getItem(sizeKey) || 'medium') as any)
-watch(calSize, (v) => localStorage.setItem(sizeKey, v))
-
-function toggleSize() {
-  const sizes: ('small' | 'medium' | 'large')[] = ['small', 'medium', 'large']
-  const idx = sizes.indexOf(calSize.value)
-  calSize.value = sizes[(idx + 1) % 3]
-}
-
-const sizeMap = { small: { w: 420, h: 320 }, medium: { w: 580, h: 440 }, large: { w: 720, h: 540 } }
+const calW = 420, calH = 320
 const nextPageHTML = ref('')
 
 function buildCalendarDays(year: number, month: number): CalendarDay[] {
@@ -157,8 +147,9 @@ async function onToggleDay(day: CalendarDay) {
 <template>
   <div class="book-wrapper" :style="{ left: x + 'px', top: y + 'px' }">
     <div class="book-drag-bar" @mousedown="onDragStart">
+      <span class="drag-dots">⋮⋮</span>
     </div>
-    <div class="book-container" :style="{ width: sizeMap[calSize].w + 'px', height: sizeMap[calSize].h + 'px' }">
+    <div class="book-container" :style="{ width: calW + 'px', height: calH + 'px' }">
       <div class="book-base" v-html="nextPageHTML"></div>
       <div class="page" :class="{ flipped }" ref="pageRef">
         <div class="page-content">
@@ -170,7 +161,6 @@ async function onToggleDay(day: CalendarDay) {
             <div class="header-nav-group">
               <button class="header-nav-btn" @click="flipPage(-1)">◂</button>
               <button class="header-nav-btn" @click="flipPage(1)">▸</button>
-              <button class="header-nav-btn header-size-btn" @click="toggleSize" :title="`尺寸: ${calSize}`">{{ calSize === 'small' ? '小' : calSize === 'medium' ? '中' : '大' }}</button>
             </div>
           </div>
           <div class="calendar-grid">
@@ -200,7 +190,6 @@ async function onToggleDay(day: CalendarDay) {
 .book-wrapper {
   position: absolute;
   z-index: 54;
-  padding-top: 24px; /* reserve space for absolute drag bar — prevents layout shift */
 }
 
 .book-drag-bar {
@@ -287,7 +276,6 @@ async function onToggleDay(day: CalendarDay) {
 }
 .header-left { display: flex; align-items: flex-end; gap: 10px; }
 .header-nav-group { display: flex; gap: 4px; }
-.header-size-btn { width: auto; padding: 0 8px; border-radius: 14px; font-size: 11px; font-weight: 700; }
 .header-nav-btn {
   width: 32px; height: 32px;
   border-radius: 50%;
