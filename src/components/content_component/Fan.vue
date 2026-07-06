@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 
-// Power & speed
-const powered = ref(true)
-const speed = ref(2) // 1, 2, 3
+const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const stateKey = `fan-state${props.widgetId != null ? '-' + props.widgetId : ''}`
+
+// Power & speed — persisted
+const savedState = JSON.parse(localStorage.getItem(stateKey) || 'null')
+const powered = ref(savedState?.powered ?? true)
+const speed = ref(savedState?.speed ?? 2)
+watch([powered, speed], () => localStorage.setItem(stateKey, JSON.stringify({ powered: powered.value, speed: speed.value })))
 
 const speeds = [
   { level: 1, label: '1', bladeDuration: 1.0, oscDuration: 5.0 },
@@ -24,7 +29,6 @@ function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInp
 function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🌀 电风扇' }
 
 // Drag
-const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `fan-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 600)
