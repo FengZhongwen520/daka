@@ -186,7 +186,7 @@ function cancelImport() { importMode.value = false }
 const posKey = `bookmarks-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 100); const y = ref(savedPos?.y ?? props.initialY ?? 100)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
+watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {
   dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value

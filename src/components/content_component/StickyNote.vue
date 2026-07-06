@@ -13,7 +13,7 @@ const posKey = `sticky-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(saved?.x ?? props.initialX ?? 80)
 const y = ref(saved?.y ?? props.initialY ?? 12)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
+watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
 
 let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
 function onDragStart(e: MouseEvent) {

@@ -15,7 +15,7 @@ const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: num
 const posKey = `book-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
 const { x, y, onDragStart } = useDraggable(saved?.x ?? props.initialX ?? 290, saved?.y ?? props.initialY ?? 100)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
+watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
 const MONTHS_EN = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER']
 
 const project = ref<Project | null>(null)

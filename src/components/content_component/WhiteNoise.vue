@@ -316,7 +316,7 @@ const posKey = `whitenoise-pos${props.widgetId != null ? '-' + props.widgetId : 
 const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
 const x = ref(savedPos?.x ?? props.initialX ?? 20)
 const y = ref(savedPos?.y ?? props.initialY ?? 300)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
+watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
 
 let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
 function onDragStart(e: MouseEvent) {
