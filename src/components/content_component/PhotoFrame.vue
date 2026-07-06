@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { db, updateWidgetPos } from '../../db'
+import DragBar from '../common/DragBar.vue'
 
 const props = defineProps<{ position?: 'left' | 'right'; widgetId?: number; initialX?: number; initialY?: number }>()
 const uid = props.widgetId != null ? String(props.widgetId) : (props.position || 'r' + Math.random().toString(36).slice(2, 6))
@@ -86,7 +87,7 @@ function prev(e: Event) { e.stopPropagation(); if (photos.value.length > 1) curr
 
 <template>
   <div class="photo-frame" :style="{ left: x + 'px', top: y + 'px' }" @click="onFrameClick">
-    <div class="photo-drag-bar" @mousedown.stop="onDragStart"><span class="drag-dots">⋮⋮</span></div>
+    <DragBar variant="overlay" :on-drag-start="onDragStart" />
     <span v-if="photos.length === 0" class="photo-placeholder">+</span>
     <template v-else>
       <img :src="photos[currentIndex]" class="photo-img" />
@@ -111,14 +112,7 @@ function prev(e: Event) { e.stopPropagation(); if (photos.value.length > 1) curr
   cursor: pointer; transition: box-shadow 0.3s; overflow: hidden; z-index: 55;
 }
 .photo-frame:hover { box-shadow: 4px 4px 0 #ddd, 12px 14px 28px rgba(0,0,0,0.3); }
-.photo-drag-bar {
-  position: absolute; top: 0; left: 0; right: 0; height: 22px;
-  background: rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center;
-  cursor: grab; z-index: 3; opacity: 0; transition: opacity 0.2s;
-}
-.photo-frame:hover .photo-drag-bar { opacity: 1; }
-.photo-drag-bar:active { cursor: grabbing; background: rgba(0,0,0,0.14); }
-.drag-dots { color: rgba(0,0,0,0.35); font-size: 16px; letter-spacing: 4px; user-select: none; }
+.photo-frame:hover :deep(.drag-bar--overlay) { opacity: 1; }
 .photo-placeholder { font-size: 48px; color: #d1d8e0; font-weight: 200; margin-top: 8px; }
 .photo-img { width: 100%; height: 100%; object-fit: cover; }
 .photo-del {

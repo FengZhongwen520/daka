@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { getMemo, saveMemo } from '../../db'
 import { MEMO_COLORS } from '../../types'
+import DragBar from '../common/DragBar.vue'
 
 const MIN_W = 200
 const MAX_W = 600
@@ -174,14 +175,11 @@ function enforceLineLimit() {
       background: bgColor,
     }"
   >
-    <!-- Header -->
-    <div class="memo-drag-bar" @mousedown="onDragStart">
-      <span class="memo-title">📝 便签</span>
+    <DragBar variant="header" :on-drag-start="onDragStart" title="📝 便签" :editable="false">
       <div class="memo-colors">
         <button
           class="memo-color-toggle"
           @click="showColors = !showColors"
-          @mousedown.stop
           title="切换颜色"
         >🎨</button>
         <div v-if="showColors" class="memo-color-palette" @mousedown.stop>
@@ -199,10 +197,9 @@ function enforceLineLimit() {
         class="memo-todo-toggle"
         :class="{ active: todoMode }"
         @click="todoMode = !todoMode"
-        @mousedown.stop
         :title="todoMode ? '切换文本模式' : '切换待办模式'"
       >{{ todoMode ? '📝' : '✅' }}</button>
-    </div>
+    </DragBar>
 
     <!-- Text -->
     <!-- Todo mode -->
@@ -256,31 +253,6 @@ function enforceLineLimit() {
     10px 14px 30px rgba(0,0,0,0.25);
 }
 
-.memo-drag-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 26px;
-  padding: 0 10px;
-  background: rgba(0,0,0,0.07);
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-}
-.memo-drag-bar:active { cursor: grabbing; background: rgba(0,0,0,0.12); }
-
-.drag-dots {
-  color: rgba(0,0,0,0.3);
-  font-size: 16px;
-  letter-spacing: 4px;
-  user-select: none;
-}
-
-.memo-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: rgba(0,0,0,0.45);
-}
 .memo-todo-toggle {
   width: 24px; height: 24px; border: none; background: rgba(0,0,0,0.06);
   border-radius: 50%; cursor: pointer; font-size: 12px;

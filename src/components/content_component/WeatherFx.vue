@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { weatherData } from '../../store'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 export interface WeatherData {
   temp: number
@@ -142,44 +144,19 @@ onUnmounted(() => clearInterval(timer))
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `weather-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 40)
-const y = ref(savedPos?.y ?? props.initialY ?? 480)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
-
-let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true
-  startX = e.clientX; startY = e.clientY; initX = x.value; initY = y.value
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) {
-  if (!dragging) return
-  x.value = initX + (e.clientX - startX)
-  y.value = initY + (e.clientY - startY)
-}
-function onDragEnd() {
-  dragging = false
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
-}
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 </script>
 
 <template>
   <div class="weather-fx" :class="{ 'is-window': viewMode === 'window', ['wx-' + condition]: viewMode === 'window' }" :style="{ left: x + 'px', top: y + 'px' }">
-    <!-- Drag bar -->
-    <div class="wf-drag-bar" @mousedown="onDragStart">
-      <span class="wf-label">🌤 天气</span>
-      <div class="wf-actions">
-        <button class="wf-toggle" :class="{ active: testMode }" @mousedown.stop="toggleTestMode" :title="testMode ? '关闭测试' : '测试天气'">
-          🧪
-        </button>
-        <button class="wf-toggle wf-window-btn" :class="{ active: viewMode === 'window' }" @mousedown.stop="toggleViewMode" :title="viewMode === 'card' ? '切换窗户视图' : '切换卡片视图'">
-          {{ viewMode === 'card' ? '🪟' : '📋' }}
-        </button>
-      </div>
-    </div>
+    <DragBar variant="header" :on-drag-start="onDragStart" title="🌤 天气" :editable="false">
+      <button class="wf-toggle" :class="{ active: testMode }" @click="toggleTestMode" :title="testMode ? '关闭测试' : '测试天气'">
+        🧪
+      </button>
+      <button class="wf-toggle wf-window-btn" :class="{ active: viewMode === 'window' }" @click="toggleViewMode" :title="viewMode === 'card' ? '切换窗户视图' : '切换卡片视图'">
+        {{ viewMode === 'card' ? '🪟' : '📋' }}
+      </button>
+    </DragBar>
 
     <!-- Card view -->
     <div v-if="viewMode === 'card'" class="wf-body">
@@ -263,22 +240,6 @@ function onDragEnd() {
   width: 300px;
 }
 
-.wf-drag-bar {
-  height: 26px;
-  background: rgba(0,0,0,0.06);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-}
-.wf-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0,0,0,0.25); font-size: 14px; letter-spacing: 3px; }
-.wf-label { font-size: 0.75rem; font-weight: 700; color: rgba(0,0,0,0.5); }
-.wf-time { font-size: 0.65rem; color: rgba(0,0,0,0.35); margin-left: auto; }
-.wf-actions { margin-left: auto; display: flex; gap: 4px; align-items: center; }
 .wf-toggle {
   width: 22px; height: 22px;
   border: none; background: rgba(0,0,0,0.06);

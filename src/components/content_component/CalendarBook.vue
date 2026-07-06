@@ -3,7 +3,8 @@ import { ref, watch, computed, nextTick } from 'vue'
 import { selectedProjectId, currentYear, currentMonth, navigateMonth } from '../../store'
 import { getProjects } from '../../db'
 import { getDaysInMonth, getFirstDayOfMonth, formatDate, todayStr } from '../../utils/date'
-import { useDraggable } from '../../composables/useDraggable'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 import type { Project } from '../../types'
 import type { CalendarDay } from '../../utils/date'
 
@@ -13,9 +14,7 @@ const WEEKDAYS_ZH = ['日','一','二','三','四','五','六']
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `book-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const saved = JSON.parse(localStorage.getItem(posKey) || 'null')
-const { x, y, onDragStart } = useDraggable(saved?.x ?? props.initialX ?? 290, saved?.y ?? props.initialY ?? 100)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 290, 100)
 const MONTHS_EN = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER']
 
 const project = ref<Project | null>(null)
@@ -146,9 +145,7 @@ async function onToggleDay(day: CalendarDay) {
 
 <template>
   <div class="book-wrapper" :style="{ left: x + 'px', top: y + 'px' }">
-    <div class="book-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
-    </div>
+    <DragBar variant="overlay" :on-drag-start="onDragStart" />
     <div class="book-container" :style="{ width: calW + 'px', height: calH + 'px' }">
       <div class="book-base" v-html="nextPageHTML"></div>
       <div class="page" :class="{ flipped }" ref="pageRef">
@@ -192,30 +189,9 @@ async function onToggleDay(day: CalendarDay) {
   z-index: 54;
 }
 
-.book-drag-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 24px;
-  background: rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  opacity: 0;
-  transition: opacity 0.2s;
-  border-radius: 5px 5px 0 0;
-  z-index: 10;
-}
-.book-wrapper:hover .book-drag-bar { opacity: 1; }
-.book-drag-bar:active { cursor: grabbing; background: rgba(0,0,0,0.16); }
-
-.drag-dots {
-  color: rgba(255,255,255,0.6);
-  font-size: 16px;
-  letter-spacing: 4px;
-  user-select: none;
+.book-wrapper:hover :deep(.drag-bar--overlay) { opacity: 1; }
+.book-wrapper:deep(.drag-bar__dots) {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .book-container {

@@ -3,6 +3,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSites, addSiteItem, removeSiteItem, clearSites } from '../../db'
 import FaviconImg from '../FaviconImg.vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 interface Site { id?: number; url: string; title: string }
 
@@ -85,12 +87,6 @@ function initialColor(t: string) {
   let hash = 0; for (let i = 0; i < t.length; i++) hash = t.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
 }
-
-// Title edit
-const editingTitle = ref(false)
-const titleInput = ref<HTMLInputElement>()
-function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
-function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '收藏夹' }
 
 // Import
 const importMode = ref(false)
@@ -184,30 +180,19 @@ function cancelImport() { importMode.value = false }
 
 // Drag
 const posKey = `bookmarks-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 100); const y = ref(savedPos?.y ?? props.initialY ?? 100)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
-let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value
-  document.addEventListener('mousemove', onDragMove); document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) { if (!dragging) return; x.value = ix + (e.clientX - sx); y.value = iy + (e.clientY - sy) }
-function onDragEnd() { dragging = false; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 100, 100, true)
 </script>
 
 <template>
-  <div class="bookmarks" :class="`layout-${currentLayout}`" :style="{ left: x + 'px', top: y + 'px' }">
-    <div class="bm-drag-bar" @mousedown="onDragStart">
-      <input v-if="editingTitle" ref="titleInput" v-model="title" class="bm-title-input" @blur="saveTitle" @keyup.enter="saveTitle" @mousedown.stop />
-      <span v-else class="bm-label" @dblclick="startEditTitle">{{ title }}</span>
+  <div class="bookmarks widget-card" :class="`layout-${currentLayout}`" :style="{ left: x + 'px', top: y + 'px' }">
+    <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="收藏夹">
       <template v-if="!importMode">
         <div class="bm-layouts">
-          <button v-for="l in layouts" :key="l" class="bm-layout-btn" :class="{ active: currentLayout === l }" @mousedown.stop @click="currentLayout = l">{{ l }}</button>
+          <button v-for="l in layouts" :key="l" class="bm-layout-btn" :class="{ active: currentLayout === l }" @click="currentLayout = l">{{ l }}</button>
         </div>
-        <button class="bm-import-btn" @mousedown.stop @click="triggerImport" title="导入浏览器收藏夹">📥</button>
+        <button class="bm-import-btn" @click="triggerImport" title="导入浏览器收藏夹">📥</button>
       </template>
-    </div>
+    </DragBar>
 
     <!-- Normal grid -->
     <div v-if="!importMode" class="bm-body bm-grid" :style="{ gridTemplateColumns: `repeat(${cols}, 1fr)`, maxHeight: bodyMaxH + 'px' }">
@@ -275,28 +260,13 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 <style scoped>
 .bookmarks {
   position: absolute;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20px) saturate(1.5);
-  border-radius: 14px; border: 1px solid rgba(255,255,255,0.5);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  z-index: 56; display: flex; flex-direction: column; overflow: hidden;
+  z-index: 56; display: flex; flex-direction: column;
 }
 .layout-3x3 { width: 210px; }
 .layout-4x4 { width: 280px; }
 .layout-2x4 { width: 150px; }
 .layout-4x2 { width: 240px; }
 
-.bm-drag-bar {
-  height: 24px; background: rgba(255,255,255,0.4);
-  display: flex; align-items: center; gap: 4px;
-  padding: 0 8px; cursor: grab; user-select: none;
-  flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-.bm-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0,0,0,0.25); font-size: 12px; letter-spacing: 2px; }
-.bm-label { font-size: 0.8rem; font-weight: 700; color: rgba(0,0,0,0.5); cursor: pointer; }
-.bm-label:hover { color: rgba(0,0,0,0.7); }
-.bm-title-input { width: 110px; font-size: 0.8rem; font-weight: 700; border: 1.5px solid #2DD4A8; border-radius: 4px; padding: 1px 4px; outline: none; font-family: inherit; background: rgba(255,255,255,0.9); }
 .bm-layouts { margin-left: auto; display: flex; gap: 1px; }
 .bm-layout-btn { padding: 1px 5px; border-radius: 3px; border: none; background: rgba(0,0,0,0.05); cursor: pointer; font-size: 0.55rem; font-weight: 700; color: rgba(0,0,0,0.35); transition: all 0.15s; font-family: inherit; }
 .bm-layout-btn:hover { background: rgba(0,0,0,0.1); }

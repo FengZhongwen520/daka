@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 // Sound definitions
 const sounds = [
@@ -313,38 +315,14 @@ onUnmounted(() => {
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `whitenoise-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 20)
-const y = ref(savedPos?.y ?? props.initialY ?? 300)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
-
-let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true
-  startX = e.clientX; startY = e.clientY
-  initX = x.value; initY = y.value
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) {
-  if (!dragging) return
-  x.value = initX + (e.clientX - startX)
-  y.value = initY + (e.clientY - startY)
-}
-function onDragEnd() {
-  dragging = false
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
-}
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 20, 300, true)
 </script>
 
 <template>
   <div class="whitenoise" :class="{ playing: isPlaying }" :style="{ left: x + 'px', top: y + 'px' }">
-    <!-- Drag bar -->
-    <div class="wn-drag-bar" @mousedown="onDragStart">
-      <span class="wn-label">📻 白噪音</span>
+    <DragBar variant="header" :on-drag-start="onDragStart" title="📻 白噪音" :editable="false">
       <span v-if="isPlaying" class="wn-playing-dot"></span>
-    </div>
+    </DragBar>
 
     <!-- Body -->
     <div class="wn-body">
@@ -406,22 +384,16 @@ function onDragEnd() {
   border: 2px solid #5a3d2b;
 }
 
-/* Drag bar */
-.wn-drag-bar {
-  height: 28px;
-  background: rgba(0,0,0,0.25);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  cursor: grab;
-  user-select: none;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+/* DragBar dark theme override */
+.whitenoise:deep(.drag-bar--header) {
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
-.wn-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(255,255,255,0.3); font-size: 16px; letter-spacing: 4px; user-select: none; }
-.wn-label { font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.7); }
+.whitenoise:deep(.drag-bar__title) {
+  color: rgba(255, 255, 255, 0.7);
+}
 
+/* Drag bar */
 .wn-playing-dot {
   width: 6px; height: 6px;
   border-radius: 50%;

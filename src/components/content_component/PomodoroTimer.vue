@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
@@ -37,28 +39,11 @@ function openSettings() {
 }
 
 const posKey = `pomodoro-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 660)
-const y = ref(savedPos?.y ?? props.initialY ?? 420)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 660, 420, true)
 
-let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
-function onDragStart(e: MouseEvent) {
+function handleDragStart(e: MouseEvent) {
   if (showSettings.value) return
-  dragging = true
-  startX = e.clientX; startY = e.clientY; initX = x.value; initY = y.value
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) {
-  if (!dragging) return
-  x.value = initX + (e.clientX - startX)
-  y.value = initY + (e.clientY - startY)
-}
-function onDragEnd() {
-  dragging = false
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
+  onDragStart(e)
 }
 
 function tick() {
@@ -100,8 +85,6 @@ function resetTimer() {
 
 onUnmounted(() => {
   clearInterval(timer!)
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
 })
 
 function playBeep() {
@@ -125,11 +108,9 @@ function playBeep() {
 
 <template>
   <div class="pomodoro" :class="[mode, { running }]" :style="{ left: x + 'px', top: y + 'px' }">
-    <!-- Drag bar -->
-    <div class="pomodoro-drag-bar" @mousedown="onDragStart">
-      <span class="pomodoro-label">{{ mode === 'focus' ? '🍅 专注' : '☕ 休息' }}</span>
-      <button class="pom-gear-btn" @mousedown.stop="openSettings" title="配置时间">⚙</button>
-    </div>
+    <DragBar variant="header" :on-drag-start="handleDragStart" :title="mode === 'focus' ? '🍅 专注' : '☕ 休息'" :editable="false">
+      <button class="pom-gear-btn" @click="openSettings" title="配置时间">⚙</button>
+    </DragBar>
 
     <!-- Circle timer -->
     <div class="pomodoro-body">
@@ -194,21 +175,6 @@ function playBeep() {
   background: linear-gradient(180deg, #e0faf0 0%, #edfdf6 30%, #fff 70%);
   box-shadow: 2px 2px 0 rgba(45,212,168,0.15), 6px 8px 24px rgba(45,212,168,0.2);
 }
-
-.pomodoro-drag-bar {
-  height: 26px;
-  background: rgba(0,0,0,0.05);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-}
-.pomodoro-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0,0,0,0.25); font-size: 16px; letter-spacing: 4px; }
-.pomodoro-label { font-size: 0.8rem; font-weight: 700; color: rgba(0,0,0,0.45); }
 
 .pom-gear-btn {
   margin-left: auto;

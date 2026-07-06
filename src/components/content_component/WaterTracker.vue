@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 const DAILY_TARGET = 2000 // ml
 const DRINK_AMOUNT = 250   // ml per click
@@ -60,29 +62,7 @@ function drink() {
 
 // Drag
 const posKey = `water-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 870)
-const y = ref(savedPos?.y ?? props.initialY ?? 420)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
-
-let dragging = false, startX = 0, startY = 0, initX = 0, initY = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true
-  startX = e.clientX; startY = e.clientY
-  initX = x.value; initY = y.value
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) {
-  if (!dragging) return
-  x.value = initX + (e.clientX - startX)
-  y.value = initY + (e.clientY - startY)
-}
-function onDragEnd() {
-  dragging = false
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
-}
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 870, 420, true)
 
 // Cup wave height (0-80 for SVG)
 const waveHeight = computed(() => progress.value * 80)
@@ -90,10 +70,7 @@ const waveHeight = computed(() => progress.value * 80)
 
 <template>
   <div class="water-tracker" :class="status" :style="{ left: x + 'px', top: y + 'px' }">
-    <!-- Drag bar -->
-    <div class="water-drag-bar" @mousedown="onDragStart">
-      <span class="water-label">{{ statusLabel }}</span>
-    </div>
+    <DragBar variant="header" :on-drag-start="onDragStart" :title="statusLabel" :editable="false" />
 
     <!-- Cup -->
     <div class="water-body">
@@ -172,22 +149,6 @@ const waveHeight = computed(() => progress.value * 80)
 }
 
 /* Drag bar */
-.water-drag-bar {
-  height: 26px;
-  background: rgba(0,0,0,0.07);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-}
-.water-drag-bar:active { cursor: grabbing; background: rgba(0,0,0,0.12); }
-.water-tracker.idle .water-drag-bar { background: rgba(240,200,0,0.15); }
-.drag-dots { color: rgba(0,0,0,0.3); font-size: 16px; letter-spacing: 4px; user-select: none; }
-.water-label { font-size: 0.8rem; font-weight: 700; color: rgba(0,0,0,0.45); }
-
 /* Body */
 .water-body {
   position: relative;

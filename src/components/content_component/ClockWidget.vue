@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 type ClockMode = 'digital' | 'analog'
 
@@ -50,46 +52,20 @@ const savedTitle = JSON.parse(localStorage.getItem('clock-title') || 'null')
 const title = ref(savedTitle ?? '🕐 时钟')
 watch(title, (v) => localStorage.setItem('clock-title', JSON.stringify(v)))
 
-const editingTitle = ref(false)
-const titleInput = ref<HTMLInputElement>()
-function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
-function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🕐 时钟' }
-
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `clock-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 700)
-const y = ref(savedPos?.y ?? props.initialY ?? 80)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
-
-let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value
-  document.addEventListener('mousemove', onDragMove); document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) { if (!dragging) return; x.value = ix + (e.clientX - sx); y.value = iy + (e.clientY - sy) }
-function onDragEnd() { dragging = false; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
 </script>
 
 <template>
-  <div class="clock-widget" :style="{ left: x + 'px', top: y + 'px' }">
+  <div class="clock-widget widget-card" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
-    <div class="cl-drag-bar" @mousedown="onDragStart">
-      <input
-        v-if="editingTitle"
-        ref="titleInput"
-        v-model="title"
-        class="cl-title-input"
-        @blur="saveTitle"
-        @keyup.enter="saveTitle"
-        @mousedown.stop
-      />
-      <span v-else class="cl-label" @dblclick="startEditTitle">{{ title }}</span>
-      <button class="cl-mode-btn" @mousedown.stop @click="toggleMode" :title="mode === 'digital' ? '切换钟表' : '切换数字'">
+    <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="🕐 时钟">
+      <button class="cl-mode-btn" @click="toggleMode" :title="mode === 'digital' ? '切换钟表' : '切换数字'">
         {{ mode === 'digital' ? '⌚' : '🔢' }}
       </button>
-    </div>
+    </DragBar>
 
     <!-- Body -->
     <div class="cl-body">
@@ -140,44 +116,11 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 .clock-widget {
   position: absolute;
   width: 210px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(1.5);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   z-index: 56;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: box-shadow 0.3s;
-}
-.clock-widget:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
 }
 
-/* Drag bar */
-.cl-drag-bar {
-  height: 24px;
-  background: rgba(0, 0, 0, 0.04);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 8px;
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.cl-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0, 0, 0, 0.2); font-size: 12px; letter-spacing: 2px; }
-.cl-label { font-size: 0.72rem; font-weight: 700; color: rgba(0, 0, 0, 0.45); cursor: pointer; }
-.cl-label:hover { color: rgba(0, 0, 0, 0.65); }
-.cl-title-input {
-  width: 70px; font-size: 0.72rem; font-weight: 700;
-  border: 1.5px solid #2DD4A8; border-radius: 4px;
-  padding: 1px 4px; outline: none; font-family: inherit;
-  background: rgba(255, 255, 255, 0.9);
-}
 .cl-mode-btn {
   margin-left: auto;
   width: 20px; height: 20px;

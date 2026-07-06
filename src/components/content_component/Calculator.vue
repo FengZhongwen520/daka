@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 const input = ref('')
 const result = ref('')
 const history = ref<{ expr: string; result: string }[]>([])
 const inputRef = ref<HTMLInputElement>()
 const keyboardVisible = ref(false)
-const editingTitle = ref(false)
 const title = ref('🔢 计算器')
-const titleInput = ref<HTMLInputElement>()
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const historyKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
@@ -92,22 +92,9 @@ function deleteHistory(index: number) {
   saveHistory()
 }
 
-function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
-function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🔢 计算器' }
-
 // Drag
 const posKey = `calc-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 500)
-const y = ref(savedPos?.y ?? props.initialY ?? 100)
-watch([x, y], () => {localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })); import('../../db').then(m=>m.updateWidgetPos(props.widgetId!,x.value,y.value)).catch(()=>{})})
-let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value
-  document.addEventListener('mousemove', onDragMove); document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) { if (!dragging) return; x.value = ix + (e.clientX - sx); y.value = iy + (e.clientY - sy) }
-function onDragEnd() { dragging = false; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 500, 100)
 
 const buttons = [
   ['C', '()', '%', '/'],
@@ -129,14 +116,12 @@ function onButtonClick(btn: string) {
 </script>
 
 <template>
-  <div class="calculator" :class="{ expanded: keyboardVisible }" :style="{ left: x + 'px', top: y + 'px' }">
-    <div class="calc-drag-bar" @mousedown="onDragStart">
-      <input v-if="editingTitle" ref="titleInput" v-model="title" class="calc-title-input" @blur="saveTitle" @keyup.enter="saveTitle" @mousedown.stop />
-      <span v-else class="calc-label" @dblclick="startEditTitle">{{ title }}</span>
-      <button class="calc-kb-toggle" @mousedown.stop @click="keyboardVisible = !keyboardVisible" :title="keyboardVisible ? '收起键盘' : '展开键盘'">
+  <div class="calculator widget-card" :class="{ expanded: keyboardVisible }" :style="{ left: x + 'px', top: y + 'px' }">
+    <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="🔢 计算器">
+      <button class="calc-kb-toggle" @click="keyboardVisible = !keyboardVisible" :title="keyboardVisible ? '收起键盘' : '展开键盘'">
         {{ keyboardVisible ? '▾' : '▸' }}
       </button>
-    </div>
+    </DragBar>
 
     <!-- Display -->
     <div class="calc-display" @click="inputRef?.focus()">
@@ -189,24 +174,10 @@ function onButtonClick(btn: string) {
 <style scoped>
 .calculator {
   position: absolute; width: 240px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(20px) saturate(1.5);
-  border-radius: 14px; border: 1px solid rgba(255,255,255,0.5);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  z-index: 56; display: flex; flex-direction: column; overflow: hidden;
+  z-index: 56; display: flex; flex-direction: column;
   transition: height 0.25s ease;
 }
 
-.calc-drag-bar {
-  height: 28px; background: rgba(0,0,0,0.04);
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 10px; cursor: grab; user-select: none;
-  flex-shrink: 0; border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.calc-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0,0,0,0.2); font-size: 14px; letter-spacing: 3px; }
-.calc-label { font-size: 0.78rem; font-weight: 700; color: rgba(0,0,0,0.45); cursor: pointer; flex: 1; }
-.calc-title-input { width: 100px; font-size: 0.78rem; font-weight: 700; border: 1.5px solid #2DD4A8; border-radius: 4px; padding: 1px 4px; outline: none; font-family: inherit; }
 .calc-kb-toggle {
   width: 20px; height: 20px; border: none; background: rgba(0,0,0,0.06);
   border-radius: 50%; cursor: pointer; font-size: 11px; color: rgba(0,0,0,0.35);

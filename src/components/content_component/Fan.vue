@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { useWidgetDrag } from '../../composables/useWidgetDrag'
+import DragBar from '../common/DragBar.vue'
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const stateKey = `fan-state${props.widgetId != null ? '-' + props.widgetId : ''}`
@@ -23,25 +25,9 @@ const savedTitle = JSON.parse(localStorage.getItem('fan-title') || 'null')
 const title = ref(savedTitle ?? '🌀 电风扇')
 watch(title, (v) => localStorage.setItem('fan-title', JSON.stringify(v)))
 
-const editingTitle = ref(false)
-const titleInput = ref<HTMLInputElement>()
-function startEditTitle() { editingTitle.value = true; setTimeout(() => titleInput.value?.focus(), 50) }
-function saveTitle() { editingTitle.value = false; if (!title.value.trim()) title.value = '🌀 电风扇' }
-
 // Drag
 const posKey = `fan-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedPos = JSON.parse(localStorage.getItem(posKey) || 'null')
-const x = ref(savedPos?.x ?? props.initialX ?? 600)
-const y = ref(savedPos?.y ?? props.initialY ?? 120)
-watch([x, y], () => localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value })))
-
-let dragging = false, sx = 0, sy = 0, ix = 0, iy = 0
-function onDragStart(e: MouseEvent) {
-  dragging = true; sx = e.clientX; sy = e.clientY; ix = x.value; iy = y.value
-  document.addEventListener('mousemove', onDragMove); document.addEventListener('mouseup', onDragEnd)
-}
-function onDragMove(e: MouseEvent) { if (!dragging) return; x.value = ix + (e.clientX - sx); y.value = iy + (e.clientY - sy) }
-function onDragEnd() { dragging = false; document.removeEventListener('mousemove', onDragMove); document.removeEventListener('mouseup', onDragEnd) }
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 600, 120, false)
 
 // Persist speed
 const savedSpeed = localStorage.getItem('fan-speed')
@@ -50,29 +36,18 @@ watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
 </script>
 
 <template>
-  <div class="fan-widget" :style="{ left: x + 'px', top: y + 'px' }">
+  <div class="fan-widget widget-card" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
-    <div class="fan-drag-bar" @mousedown="onDragStart">
-      <input
-        v-if="editingTitle"
-        ref="titleInput"
-        v-model="title"
-        class="fan-title-input"
-        @blur="saveTitle"
-        @keyup.enter="saveTitle"
-        @mousedown.stop
-      />
-      <span v-else class="fan-label" @dblclick="startEditTitle">{{ title }}</span>
+    <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="🌀 电风扇">
       <button
         class="fan-power-btn"
         :class="{ on: powered }"
-        @mousedown.stop
         @click="powered = !powered"
         :title="powered ? '关闭' : '开启'"
       >
         {{ powered ? '⏻' : '⏻' }}
       </button>
-    </div>
+    </DragBar>
 
     <!-- Fan scene -->
     <div class="fan-scene">
@@ -113,43 +88,9 @@ watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
 .fan-widget {
   position: absolute;
   width: 280px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(20px) saturate(1.5);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   z-index: 56;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  transition: box-shadow 0.3s;
-}
-.fan-widget:hover {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.14);
-}
-
-/* Drag bar */
-.fan-drag-bar {
-  height: 28px;
-  background: rgba(0, 0, 0, 0.04);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-.fan-drag-bar:active { cursor: grabbing; }
-.drag-dots { color: rgba(0, 0, 0, 0.2); font-size: 14px; letter-spacing: 3px; }
-.fan-label { font-size: 0.78rem; font-weight: 700; color: rgba(0, 0, 0, 0.45); cursor: pointer; }
-.fan-label:hover { color: rgba(0, 0, 0, 0.65); }
-.fan-title-input {
-  width: 100px; font-size: 0.78rem; font-weight: 700;
-  border: 1.5px solid #2DD4A8; border-radius: 4px;
-  padding: 1px 4px; outline: none; font-family: inherit;
-  background: rgba(255, 255, 255, 0.9);
 }
 
 .fan-power-btn {
