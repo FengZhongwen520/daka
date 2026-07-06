@@ -87,7 +87,20 @@ const sceneBgStyle = computed(() => {
 
 onMounted(async () => {
   customWallpaper.value = await getWallpaper()
+
+  // Resize canvas when sidebar toggles
+  const ro = new ResizeObserver(() => {
+    const canvas = canvasRef.value
+    if (!canvas || !canvas.parentElement) return
+    const rect = canvas.parentElement.getBoundingClientRect()
+    canvas.width = rect.width; canvas.height = rect.height
+  })
+  ro.observe(document.querySelector('.calendar-scene')!)
+  resizeObserver = ro
 })
+
+let resizeObserver: ResizeObserver | null = null
+onUnmounted(() => { cancelAnimationFrame(animId); resizeObserver?.disconnect() })
 
 watch(customWallpaper, async (v) => {
   if (v) await saveWallpaper(v)
@@ -163,7 +176,6 @@ watch(weatherWallpaper, async (on) => {
   }
 })
 
-onUnmounted(() => cancelAnimationFrame(animId))
 </script>
 
 <template>

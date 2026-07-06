@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper } from '../store'
 import { getProjects, deleteProject, updateProject } from '../db'
@@ -105,6 +105,13 @@ function toggleModule(name: string) {
   activeModule.value = activeModule.value === name ? '' : name
 }
 
+function onDocClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.menu-item-wrap') && !target.closest('.sidebar-bubble')) {
+    activeModule.value = ''
+  }
+}
+
 function onImportClick() { fileInput.value?.click() }
 
 function editProjectName(p: Project) {
@@ -129,7 +136,12 @@ async function onFileChange(e: Event) {
   if (fileInput.value) fileInput.value.value = ''
 }
 
-onMounted(loadProjects)
+onMounted(() => {
+  loadProjects()
+  document.addEventListener('click', onDocClick)
+})
+
+onUnmounted(() => { document.removeEventListener('click', onDocClick) })
 
 watch(showModal, async (visible) => {
   if (!visible) await loadProjects()
@@ -153,73 +165,81 @@ watch(showModal, async (visible) => {
       </div>
 
       <!-- Projects -->
-      <div class="sidebar-menu-item" :class="{ active: activeModule === 'projects' }" @click="toggleModule('projects')">
-        <span class="menu-icon">📋</span>
-        <span class="menu-label">项目</span>
-      </div>
-      <div v-if="activeModule === 'projects'" class="sidebar-bubble">
-        <div class="bubble-project-list">
-          <div
-            v-for="p in projects"
-            :key="p.id"
-            class="bubble-project-item"
-            :class="{ active: selectedProjectId === p.id }"
-          >
-            <span class="project-color-dot" :style="{ background: p.color }" @click="selectProject(p.id!); activeModule = ''"></span>
-            <span @click="selectProject(p.id!); activeModule = ''">{{ p.icon }} {{ p.name }}</span>
-            <button class="bubble-project-edit" @click.stop="editProjectName(p)" title="重命名">✎</button>
-            <button class="bubble-project-del" @click.stop="onDelete(p.id!, $event)" title="删除">✕</button>
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item" :class="{ active: activeModule === 'projects' }" @click="toggleModule('projects')">
+          <span class="menu-icon">📋</span>
+          <span class="menu-label">项目</span>
+        </div>
+        <div v-if="activeModule === 'projects'" class="sidebar-bubble">
+          <div class="bubble-project-list">
+            <div
+              v-for="p in projects"
+              :key="p.id"
+              class="bubble-project-item"
+              :class="{ active: selectedProjectId === p.id }"
+            >
+              <span class="project-color-dot" :style="{ background: p.color }" @click="selectProject(p.id!); activeModule = ''"></span>
+              <span @click="selectProject(p.id!); activeModule = ''">{{ p.icon }} {{ p.name }}</span>
+              <button class="bubble-project-edit" @click.stop="editProjectName(p)" title="重命名">✎</button>
+              <button class="bubble-project-del" @click.stop="onDelete(p.id!, $event)" title="删除">✕</button>
+            </div>
+            <div v-if="projects.length === 0" class="bubble-empty">暂无项目</div>
           </div>
-          <div v-if="projects.length === 0" class="bubble-empty">暂无项目</div>
+          <el-button class="btn-block btn-sm" @click="onAddClick" :disabled="projects.length >= MAX_PROJECTS">
+            {{ projects.length >= MAX_PROJECTS ? '项目已满' : `+ 新增 (${projects.length}/${MAX_PROJECTS})` }}
+          </el-button>
+          <div class="bubble-row">
+            <button class="sidebar-text-btn" @click="handleExport">↥ 导出</button>
+            <button class="sidebar-text-btn" @click="onImportClick">↧ 导入</button>
+          </div>
+          <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
         </div>
-        <el-button class="btn-block btn-sm" @click="onAddClick" :disabled="projects.length >= MAX_PROJECTS">
-          {{ projects.length >= MAX_PROJECTS ? '项目已满' : `+ 新增 (${projects.length}/${MAX_PROJECTS})` }}
-        </el-button>
-        <div class="bubble-row">
-          <button class="sidebar-text-btn" @click="handleExport">↥ 导出</button>
-          <button class="sidebar-text-btn" @click="onImportClick">↧ 导入</button>
-        </div>
-        <input ref="fileInput" type="file" accept=".json" style="display:none" @change="onFileChange" />
       </div>
 
-            <!-- Wallpaper -->
-      <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
-        <span class="menu-icon">🖼</span>
-        <span class="menu-label">壁纸</span>
-      </div>
-      <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
-        <div class="bubble-row">
-          <span class="bubble-label">天气壁纸</span>
-          <el-switch :model-value="weatherWallpaper" size="small" @change="toggleWeatherWallpaper" />
+      <!-- Wallpaper -->
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
+          <span class="menu-icon">🖼</span>
+          <span class="menu-label">壁纸</span>
         </div>
-        <div class="bubble-row">
-          <span class="bubble-label">自定义壁纸</span>
-          <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
+        <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
+          <div class="bubble-row">
+            <span class="bubble-label">天气壁纸</span>
+            <el-switch :model-value="weatherWallpaper" size="small" @change="toggleWeatherWallpaper" />
+          </div>
+          <div class="bubble-row">
+            <span class="bubble-label">自定义壁纸</span>
+            <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
+          </div>
+          <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
+          <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
         </div>
-        <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
-        <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
       </div>
 
       <!-- Help -->
-      <div class="sidebar-menu-item" :class="{ active: activeModule === 'help' }" @click="toggleModule('help')">
-        <span class="menu-icon">❓</span>
-        <span class="menu-label">帮助</span>
-      </div>
-      <div v-if="activeModule === 'help'" class="sidebar-bubble">
-        <p class="bubble-title">✊ Dake 哒咔</p>
-        <p class="bubble-desc">浏览器导航页，你的个人工作台。</p>
-        <p class="bubble-ver">v2.0 拖拽组件、多项目<br>v1.5 天气、白噪音、番茄钟<br>v1.0 基础打卡、导入导出</p>
-        <el-button class="btn-block btn-sm" @click="openWelcome">重新查看引导</el-button>
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item" :class="{ active: activeModule === 'help' }" @click="toggleModule('help')">
+          <span class="menu-icon">❓</span>
+          <span class="menu-label">帮助</span>
+        </div>
+        <div v-if="activeModule === 'help'" class="sidebar-bubble">
+          <p class="bubble-title">✊ Dake 哒咔</p>
+          <p class="bubble-desc">浏览器导航页，你的个人工作台。</p>
+          <p class="bubble-ver">v2.0 拖拽组件、多项目<br>v1.5 天气、白噪音、番茄钟<br>v1.0 基础打卡、导入导出</p>
+          <el-button class="btn-block btn-sm" @click="openWelcome">重新查看引导</el-button>
+        </div>
       </div>
 
       <!-- Clear -->
-      <div class="sidebar-menu-item danger" :class="{ active: activeModule === 'clear' }" @click="toggleModule('clear')">
-        <span class="menu-icon">🗑</span>
-        <span class="menu-label">清除</span>
-      </div>
-      <div v-if="activeModule === 'clear'" class="sidebar-bubble">
-        <p class="bubble-warn">清除当前项目全部数据</p>
-        <el-button class="btn-block btn-sm" type="danger" @click="onClearData">确认清除</el-button>
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item danger" :class="{ active: activeModule === 'clear' }" @click="toggleModule('clear')">
+          <span class="menu-icon">🗑</span>
+          <span class="menu-label">清除</span>
+        </div>
+        <div v-if="activeModule === 'clear'" class="sidebar-bubble">
+          <p class="bubble-warn">清除当前项目全部数据</p>
+          <el-button class="btn-block btn-sm" type="danger" @click="onClearData">确认清除</el-button>
+        </div>
       </div>
 
 
@@ -274,7 +294,9 @@ watch(showModal, async (visible) => {
   padding: 12px 12px; margin-bottom: 6px;
   border-radius: 10px; background: rgba(45,212,168,0.08);
 }
-.project-color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.project-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; min-width: 10px; }
+
+.bubble-backdrop { position: fixed; inset: 0; z-index: 99; }
 .project-icon { font-size: 16px; flex-shrink: 0; }
 .project-name { font-size: 13px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -285,10 +307,12 @@ watch(showModal, async (visible) => {
 .btn-block { width: 100%; }
 .btn-sm { font-size: 12px; padding: 5px 10px; }
 
+.menu-item-wrap { position: relative; }
+
 .sidebar-menu-item {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border-radius: 8px; cursor: pointer;
-  transition: all 0.2s; position: relative;
+  transition: all 0.2s;
 }
 .sidebar-menu-item:hover { background: rgba(0,0,0,0.04); }
 .sidebar-menu-item.active { background: rgba(45,212,168,0.1); }
@@ -299,7 +323,7 @@ watch(showModal, async (visible) => {
 /* Bubble pops to the RIGHT */
 .sidebar-bubble {
   position: absolute; left: calc(100% + 8px); top: 0;
-  width: 200px; padding: 10px;
+  width: 220px; padding: 12px;
   background: #fff; border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.12);
   z-index: 100; display: flex; flex-direction: column; gap: 6px;
@@ -322,6 +346,7 @@ watch(showModal, async (visible) => {
 }
 .bubble-project-item:hover { background: rgba(0,0,0,0.04); }
 .bubble-project-item { gap: 4px; }
+.bubble-project-item span.project-color-dot { flex: none; }
 .bubble-project-item span { flex: 1; cursor: pointer; }
 .bubble-project-item.active { background: rgba(45,212,168,0.1); color: #2DD4A8; }
 .bubble-project-edit, .bubble-project-del {
