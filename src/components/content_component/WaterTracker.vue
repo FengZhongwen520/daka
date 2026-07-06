@@ -92,7 +92,6 @@ const waveHeight = computed(() => progress.value * 80)
   <div class="water-tracker" :class="status" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="water-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <span class="water-label">{{ statusLabel }}</span>
     </div>
 

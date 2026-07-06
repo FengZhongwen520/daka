@@ -171,7 +171,6 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   <div class="translate-box" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="tr-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input
         v-if="editingTitle"
         ref="titleInput"

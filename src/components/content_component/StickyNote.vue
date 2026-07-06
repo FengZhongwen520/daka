@@ -26,7 +26,7 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 
 <template>
   <div class="sticky-note" :style="{ left: x + 'px', top: y + 'px' }">
-    <div class="sticky-drag-bar" @mousedown="onDragStart"><span class="drag-dots">⋮⋮</span></div>
+    <div class="sticky-drag-bar" @mousedown="onDragStart"></div>
     <textarea
       v-model="text"
       class="sticky-textarea"

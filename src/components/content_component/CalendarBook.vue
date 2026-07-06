@@ -157,7 +157,6 @@ async function onToggleDay(day: CalendarDay) {
 <template>
   <div class="book-wrapper" :style="{ left: x + 'px', top: y + 'px' }">
     <div class="book-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
     </div>
     <div class="book-container" :style="{ width: sizeMap[calSize].w + 'px', height: sizeMap[calSize].h + 'px' }">
       <div class="book-base" v-html="nextPageHTML"></div>

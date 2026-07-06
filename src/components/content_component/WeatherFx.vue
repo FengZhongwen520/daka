@@ -170,7 +170,6 @@ function onDragEnd() {
   <div class="weather-fx" :class="{ 'is-window': viewMode === 'window', ['wx-' + condition]: viewMode === 'window' }" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="wf-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <span class="wf-label">🌤 天气</span>
       <div class="wf-actions">
         <button class="wf-toggle" :class="{ active: testMode }" @mousedown.stop="toggleTestMode" :title="testMode ? '关闭测试' : '测试天气'">

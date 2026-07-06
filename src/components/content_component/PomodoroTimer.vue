@@ -127,7 +127,6 @@ function playBeep() {
   <div class="pomodoro" :class="[mode, { running }]" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="pomodoro-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <span class="pomodoro-label">{{ mode === 'focus' ? '🍅 专注' : '☕ 休息' }}</span>
       <button class="pom-gear-btn" @mousedown.stop="openSettings" title="配置时间">⚙</button>
     </div>

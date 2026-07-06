@@ -199,7 +199,6 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
 <template>
   <div class="bookmarks" :class="`layout-${currentLayout}`" :style="{ left: x + 'px', top: y + 'px' }">
     <div class="bm-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input v-if="editingTitle" ref="titleInput" v-model="title" class="bm-title-input" @blur="saveTitle" @keyup.enter="saveTitle" @mousedown.stop />
       <span v-else class="bm-label" @dblclick="startEditTitle">{{ title }}</span>
       <template v-if="!importMode">

@@ -131,7 +131,6 @@ function onButtonClick(btn: string) {
 <template>
   <div class="calculator" :class="{ expanded: keyboardVisible }" :style="{ left: x + 'px', top: y + 'px' }">
     <div class="calc-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input v-if="editingTitle" ref="titleInput" v-model="title" class="calc-title-input" @blur="saveTitle" @keyup.enter="saveTitle" @mousedown.stop />
       <span v-else class="calc-label" @dblclick="startEditTitle">{{ title }}</span>
       <button class="calc-kb-toggle" @mousedown.stop @click="keyboardVisible = !keyboardVisible" :title="keyboardVisible ? '收起键盘' : '展开键盘'">

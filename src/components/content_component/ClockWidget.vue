@@ -76,7 +76,6 @@ function onDragEnd() { dragging = false; document.removeEventListener('mousemove
   <div class="clock-widget" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="cl-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input
         v-if="editingTitle"
         ref="titleInput"

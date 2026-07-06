@@ -86,7 +86,7 @@ function prev(e: Event) { e.stopPropagation(); if (photos.value.length > 1) curr
 
 <template>
   <div class="photo-frame" :style="{ left: x + 'px', top: y + 'px' }" @click="onFrameClick">
-    <div class="photo-drag-bar" @mousedown.stop="onDragStart"><span class="drag-dots">⋮⋮</span></div>
+    <div class="photo-drag-bar" @mousedown.stop="onDragStart"></div>
     <span v-if="photos.length === 0" class="photo-placeholder">+</span>
     <template v-else>
       <img :src="photos[currentIndex]" class="photo-img" />

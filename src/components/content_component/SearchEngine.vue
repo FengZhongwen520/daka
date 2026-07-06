@@ -142,7 +142,6 @@ function formatTime(ts: number) {
   <div class="searchengine" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="se-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input
         v-if="editingTitle"
         ref="titleInput"

@@ -53,7 +53,6 @@ watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
   <div class="fan-widget" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="fan-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <input
         v-if="editingTitle"
         ref="titleInput"

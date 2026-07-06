@@ -342,7 +342,6 @@ function onDragEnd() {
   <div class="whitenoise" :class="{ playing: isPlaying }" :style="{ left: x + 'px', top: y + 'px' }">
     <!-- Drag bar -->
     <div class="wn-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <span class="wn-label">📻 白噪音</span>
       <span v-if="isPlaying" class="wn-playing-dot"></span>
     </div>

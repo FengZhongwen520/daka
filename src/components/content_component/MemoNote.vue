@@ -176,7 +176,6 @@ function enforceLineLimit() {
   >
     <!-- Header -->
     <div class="memo-drag-bar" @mousedown="onDragStart">
-      <span class="drag-dots">⋮⋮</span>
       <span class="memo-title">📝 便签</span>
       <div class="memo-colors">
         <button
