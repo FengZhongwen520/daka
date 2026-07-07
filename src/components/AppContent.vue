@@ -27,13 +27,37 @@ const widgetMap: Record<string, any> = {
 // Widget instances
 const widgets = ref<WidgetInstance[]>([])
 
-async function loadWidgets() {
+function getCacheKey() { return `widgets-cache-${selectedProjectId.value}` }
+
+// 1. 先渲染缓存，秒开
+function loadCachedWidgets() {
   if (!selectedProjectId.value) { widgets.value = []; return }
-  widgets.value = await getWidgets(selectedProjectId.value)
+  const cached = localStorage.getItem(getCacheKey())
+  if (cached) {
+    try { widgets.value = JSON.parse(cached) } catch { /* ignore */ }
+  }
 }
 
-onMounted(loadWidgets)
-watch(selectedProjectId, loadWidgets)
+// 2. 后台从 IndexedDB 加载最新数据
+async function loadWidgets() {
+  if (!selectedProjectId.value) { widgets.value = []; return }
+  const fresh = await getWidgets(selectedProjectId.value)
+  widgets.value = fresh
+  localStorage.setItem(getCacheKey(), JSON.stringify(fresh))
+}
+
+function updateWidgetCache() {
+  localStorage.setItem(getCacheKey(), JSON.stringify(widgets.value))
+}
+
+onMounted(() => {
+  loadCachedWidgets()  // 立即渲染
+  loadWidgets()         // 后台同步
+})
+watch(selectedProjectId, () => {
+  loadCachedWidgets()
+  loadWidgets()
+})
 
 const sceneRef = ref<HTMLElement>()
 
@@ -51,11 +75,13 @@ async function onAddWidget(type: string) {
   const pos = getNewWidgetPos()
   const id = await addWidget(type, pos.x, pos.y, selectedProjectId.value)
   widgets.value.push({ id, type, x: pos.x, y: pos.y, projectId: selectedProjectId.value })
+  updateWidgetCache()
 }
 
 async function onRemoveWidget(id: number) {
   await removeWidget(id)
   widgets.value = widgets.value.filter(w => w.id !== id)
+  updateWidgetCache()
 }
 
 // Gallery
