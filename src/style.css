@@ -1,24 +1,3 @@
-/* === HarmonyOS Sans Font === */
-@font-face {
-  font-family: 'HarmonyOS Sans SC';
-  src: local('HarmonyOS Sans SC'),
-       local('HarmonyOS_Sans_SC'),
-       url('https://cdn.jsdelivr.net/gh/nicedoc/HarmonyOS-Sans@main/HarmonyOS_Sans_SC/Regular/HarmonyOS_Sans_SC_Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'HarmonyOS Sans SC';
-  src: local('HarmonyOS Sans SC'),
-       local('HarmonyOS_Sans_SC'),
-       url('https://cdn.jsdelivr.net/gh/nicedoc/HarmonyOS-Sans@main/HarmonyOS_Sans_SC/Bold/HarmonyOS_Sans_SC_Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* === CSS Variables === */
 :root {
   --color-primary: #2DD4A8;
@@ -36,7 +15,7 @@
   --radius-sm: 10px;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --font-family: 'HarmonyOS Sans SC', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  --font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
   --sidebar-width: 260px;
   --header-height: 56px;
   --transition: 0.2s ease;

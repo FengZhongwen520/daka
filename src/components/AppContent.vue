@@ -1,42 +1,27 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, markRaw } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
 import { selectedProjectId, weatherData, weatherWallpaper, customWallpaper } from '../store/index.ts'
 import { getWidgets, addWidget, removeWidget, getWallpaper, saveWallpaper } from '../db/index.ts'
 import { WIDGETS } from './content_component/registry.ts'
 import type { WidgetInstance } from '../db/index.ts'
-
-// All widget components
-import CalendarBook from './content_component/CalendarBook.vue'
-import StickyNote from './content_component/StickyNote.vue'
-import PhotoFrame from './content_component/PhotoFrame.vue'
-import WeatherFx from './content_component/WeatherFx.vue'
-import PomodoroTimer from './content_component/PomodoroTimer.vue'
-import WaterTracker from './content_component/WaterTracker.vue'
-import WhiteNoise from './content_component/WhiteNoise.vue'
-import Bookmarks from './content_component/Bookmarks.vue'
-import MemoNote from './content_component/MemoNote.vue'
-import Calculator from './content_component/Calculator.vue'
-import SearchEngine from './content_component/SearchEngine.vue'
-import TranslateBox from './content_component/TranslateBox.vue'
-import Fan from './content_component/Fan.vue'
-import ClockWidget from './content_component/ClockWidget.vue'
 import WidgetWrapper from './content_component/WidgetWrapper.vue'
 
+// Widget components — lazy loaded per type
 const widgetMap: Record<string, any> = {
-  calendar: markRaw(CalendarBook),
-  sticky: markRaw(StickyNote),
-  photoframe: markRaw(PhotoFrame),
-  weather: markRaw(WeatherFx),
-  pomodoro: markRaw(PomodoroTimer),
-  water: markRaw(WaterTracker),
-  whitenoise: markRaw(WhiteNoise),
-  bookmarks: markRaw(Bookmarks),
-  memo: markRaw(MemoNote),
-  calculator: markRaw(Calculator),
-  searchengine: markRaw(SearchEngine),
-  translate: markRaw(TranslateBox),
-  fan: markRaw(Fan),
-  clock: markRaw(ClockWidget),
+  calendar: defineAsyncComponent(() => import('./content_component/CalendarBook.vue')),
+  sticky: defineAsyncComponent(() => import('./content_component/StickyNote.vue')),
+  photoframe: defineAsyncComponent(() => import('./content_component/PhotoFrame.vue')),
+  weather: defineAsyncComponent(() => import('./content_component/WeatherFx.vue')),
+  pomodoro: defineAsyncComponent(() => import('./content_component/PomodoroTimer.vue')),
+  water: defineAsyncComponent(() => import('./content_component/WaterTracker.vue')),
+  whitenoise: defineAsyncComponent(() => import('./content_component/WhiteNoise.vue')),
+  bookmarks: defineAsyncComponent(() => import('./content_component/Bookmarks.vue')),
+  memo: defineAsyncComponent(() => import('./content_component/MemoNote.vue')),
+  calculator: defineAsyncComponent(() => import('./content_component/Calculator.vue')),
+  searchengine: defineAsyncComponent(() => import('./content_component/SearchEngine.vue')),
+  translate: defineAsyncComponent(() => import('./content_component/TranslateBox.vue')),
+  fan: defineAsyncComponent(() => import('./content_component/Fan.vue')),
+  clock: defineAsyncComponent(() => import('./content_component/ClockWidget.vue')),
 }
 
 // Widget instances
