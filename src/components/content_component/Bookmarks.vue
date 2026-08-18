@@ -23,17 +23,23 @@ watch(title, (v) => localStorage.setItem(titleKey, JSON.stringify(v)))
 // Layout
 const layoutKey = `bm-layout${props.widgetId != null ? '-' + props.widgetId : ''}`
 const savedLayout = localStorage.getItem(layoutKey) || '3x3'
-const layouts = ['3x3', '4x4', '2x4', '4x2'] as const
+const layouts = ['3x3', '4x4', '2x4', '4x2', 'list'] as const
 type Layout = (typeof layouts)[number]
 const currentLayout = ref<Layout>(savedLayout as Layout)
 watch(currentLayout, (v) => localStorage.setItem(layoutKey, v))
 
-const cols = computed(() => parseInt(currentLayout.value[0]))
-const rows = computed(() => parseInt(currentLayout.value[2]))
+const layoutLabels: Record<Layout, string> = { '3x3': '3×3', '4x4': '4×4', '2x4': '2×4', '4x2': '4×2', list: '≡' }
+const isList = computed(() => currentLayout.value === 'list')
+const cols = computed(() => (isList.value ? 1 : parseInt(currentLayout.value[0])))
+const rows = computed(() => (isList.value ? 8 : parseInt(currentLayout.value[2])))
 
 // Max body height = visible rows × (cell + gap) + padding
 const bodyMaxH = computed(() => {
-  const w = { '3x3': 210, '4x4': 280, '2x4': 150, '4x2': 240 }[currentLayout.value] || 210
+  if (isList.value) {
+    const rowH = 34, gap = 4
+    return rows.value * rowH + (rows.value - 1) * gap + 20
+  }
+  const w = { '3x3': 210, '4x4': 280, '2x4': 150, '4x2': 240, list: 230 }[currentLayout.value] || 210
   const cellW = (w - 20 - (cols.value - 1) * 6) / cols.value
   return rows.value * cellW + (rows.value - 1) * 6 + 20
 })
@@ -188,14 +194,28 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 100, 100, true)
     <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="收藏夹">
       <template v-if="!importMode">
         <div class="bm-layouts">
-          <button v-for="l in layouts" :key="l" class="bm-layout-btn" :class="{ active: currentLayout === l }" @click="currentLayout = l">{{ l }}</button>
+          <button v-for="l in layouts" :key="l" class="bm-layout-btn" :class="{ active: currentLayout === l }" @click="currentLayout = l" :title="l === 'list' ? '列表模式' : l">{{ layoutLabels[l] }}</button>
         </div>
         <button class="bm-import-btn" @click="triggerImport" title="导入浏览器收藏夹">📥</button>
       </template>
     </DragBar>
 
+    <!-- List mode -->
+    <div v-if="!importMode && isList" class="bm-body bm-list" :style="{ maxHeight: bodyMaxH + 'px' }">
+      <div v-for="(slot, i) in displaySlots" :key="i" class="bm-list-row" :class="{ empty: !slot }">
+        <template v-if="slot">
+          <a :href="slot.url" target="_blank" class="bm-link-row" @click.stop :title="slot.title">
+            <FaviconImg :url="slot.url" :fallback-text="siteInitial(slot.title)" :fallback-color="initialColor(slot.title)" />
+            <span class="bm-list-name">{{ slot.title }}</span>
+          </a>
+          <button class="bm-del-btn bm-list-del" @click.stop="removeSite(slot.id!)">✕</button>
+        </template>
+        <button v-else class="bm-list-add" @click="openAddPanel">＋ 添加网址</button>
+      </div>
+    </div>
+
     <!-- Normal grid -->
-    <div v-if="!importMode" class="bm-body bm-grid" :style="{ gridTemplateColumns: `repeat(${cols}, 1fr)`, maxHeight: bodyMaxH + 'px' }">
+    <div v-else-if="!importMode" class="bm-body bm-grid" :style="{ gridTemplateColumns: `repeat(${cols}, 1fr)`, maxHeight: bodyMaxH + 'px' }">
       <div v-for="(slot, i) in displaySlots" :key="i" class="bm-cell" :class="{ empty: !slot }">
         <template v-if="slot">
           <a :href="slot.url" target="_blank" class="bm-link" @click.stop :title="slot.title">
@@ -266,6 +286,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 100, 100, true)
 .layout-4x4 { width: 280px; }
 .layout-2x4 { width: 150px; }
 .layout-4x2 { width: 240px; }
+.layout-list { width: 230px; }
 
 .bm-layouts { margin-left: auto; display: flex; gap: 1px; }
 .bm-layout-btn { padding: 1px 5px; border-radius: 3px; border: none; background: rgba(0,0,0,0.05); cursor: pointer; font-size: 0.55rem; font-weight: 700; color: rgba(0,0,0,0.35); transition: all 0.15s; font-family: inherit; }
@@ -281,6 +302,18 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 100, 100, true)
 .bm-cell.empty { border: 1.2px dashed rgba(0,0,0,0.1); }
 .bm-link { display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; padding: 4px 2px; width: 100%; height: 100%; justify-content: center; }
 .bm-site-name { font-size: 0.68rem; color: #444; font-weight: 600; text-align: center; max-width: 90%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* List mode */
+.bm-list { display: flex; flex-direction: column; gap: 4px; }
+.bm-list-row { display: flex; align-items: center; gap: 8px; padding: 0 6px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.6); transition: background 0.2s; flex-shrink: 0; }
+.bm-list-row:not(.empty):hover { background: rgba(255,255,255,0.9); }
+.bm-list-row.empty { border: 1.2px dashed rgba(0,0,0,0.1); height: 32px; }
+.bm-link-row { display: flex; align-items: center; gap: 8px; text-decoration: none; flex: 1; min-width: 0; }
+.bm-list-name { font-size: 0.75rem; color: #444; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bm-list-del { position: static; top: auto; right: auto; margin-left: auto; opacity: 0; }
+.bm-list-row:hover .bm-list-del { opacity: 1; }
+.bm-list-add { flex: 1; height: 100%; border: none; background: transparent; font-size: 0.72rem; font-weight: 600; color: rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: inherit; transition: color 0.2s; }
+.bm-list-add:hover { color: #2DD4A8; }
 .bm-add-btn { width: 100%; height: 100%; border: none; background: transparent; font-size: 22px; color: rgba(0,0,0,0.12); cursor: pointer; transition: all 0.2s; font-weight: 300; display: flex; align-items: center; justify-content: center; }
 .bm-add-btn:hover { color: #2DD4A8; transform: scale(1.15); }
 .bm-del-btn { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; border: none; background: rgba(0,0,0,0.3); color: #fff; cursor: pointer; font-size: 7px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }

@@ -4,7 +4,7 @@ import ElementPlus from 'unplugin-element-plus/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), ElementPlus()],
+  plugins: [vue(), ElementPlus({})],
   base: './',
   build: {
     chunkSizeWarningLimit: 1000,

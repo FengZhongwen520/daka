@@ -9,16 +9,30 @@ const IDLE_WARN_MIN = 60   // turn yellow after 60 min no drink
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
+// Local-timezone date string (UTC via toISOString would roll the day over at 8am in UTC+8)
+function dateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // Load today's data
-const today = new Date().toISOString().slice(0, 10)
-const waterKey = `water-${today}${props.widgetId != null ? '-' + props.widgetId : ''}`
-const saved = JSON.parse(localStorage.getItem(waterKey) || 'null')
+const today = ref(dateStr(new Date()))
+const waterKey = computed(() => `water-${today.value}${props.widgetId != null ? '-' + props.widgetId : ''}`)
+const saved = JSON.parse(localStorage.getItem(waterKey.value) || 'null')
 const dailyTotal = ref(saved?.total ?? 0)
 const lastDrinkTime = ref(saved?.lastDrink ?? 0)
 const now = ref(Date.now())
 
 function save() {
-  localStorage.setItem(waterKey, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value }))
+  localStorage.setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value }))
+}
+
+function rolloverIfNewDay() {
+  const dayStr = dateStr(new Date())
+  if (dayStr !== today.value) {
+    today.value = dayStr
+    dailyTotal.value = 0
+    lastDrinkTime.value = 0
+  }
 }
 
 // Status
@@ -45,15 +59,19 @@ const progress = computed(() => Math.min(dailyTotal.value / DAILY_TARGET, 1))
 const cups = computed(() => Math.floor(dailyTotal.value / DRINK_AMOUNT))
 const targetCups = DAILY_TARGET / DRINK_AMOUNT
 
-// Idle check timer
+// Idle check timer — also handles rolling over to a new local day while the page stays open
 let idleTimer: ReturnType<typeof setInterval>
 onMounted(() => {
-  idleTimer = setInterval(() => { now.value = Date.now() }, 10000)
+  idleTimer = setInterval(() => {
+    now.value = Date.now()
+    rolloverIfNewDay()
+  }, 10000)
 })
 onUnmounted(() => clearInterval(idleTimer))
 
 // Drink
 function drink() {
+  rolloverIfNewDay()
   dailyTotal.value += DRINK_AMOUNT
   lastDrinkTime.value = Date.now()
   now.value = Date.now()

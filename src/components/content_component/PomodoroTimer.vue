@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
@@ -15,10 +15,31 @@ const showSettings = ref(false)
 const focusSec = computed(() => focusMin.value * 60)
 const breakSec = computed(() => breakMin.value * 60)
 
-const mode = ref<'focus' | 'break'>('focus')
-const remaining = ref(focusSec.value)
-const running = ref(false)
+// Persistent running state — restored on refresh
+const stateKey = `pomodoro-state${props.widgetId != null ? '-' + props.widgetId : ''}`
+const savedState = JSON.parse(localStorage.getItem(stateKey) || 'null')
+
+const mode = ref<'focus' | 'break'>(savedState?.mode === 'break' ? 'break' : 'focus')
+let initRemaining = savedState?.remaining ?? focusSec.value
+let initRunning = savedState?.running ?? false
+
+if (initRunning && savedState?.deadline) {
+  // Running → restore from the absolute deadline so the countdown stays accurate
+  initRemaining = Math.max(Math.round((savedState.deadline - Date.now()) / 1000), 0)
+  if (initRemaining <= 0) {
+    // Phase finished while the page was closed — move on to the next phase
+    initRunning = false
+    mode.value = mode.value === 'focus' ? 'break' : 'focus'
+    initRemaining = mode.value === 'focus' ? focusSec.value : breakSec.value
+  }
+}
+
+const remaining = ref(initRemaining)
+const running = ref(initRunning)
+const deadline = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
+
+if (initRunning) startTimer()
 
 const total = computed(() => mode.value === 'focus' ? focusSec.value : breakSec.value)
 const minutes = computed(() => Math.floor(remaining.value / 60))
@@ -31,6 +52,7 @@ function saveSettings() {
   if (mode.value === 'focus') remaining.value = focusSec.value
   else remaining.value = breakSec.value
   showSettings.value = false
+  saveState()
 }
 
 function openSettings() {
@@ -46,9 +68,50 @@ function handleDragStart(e: MouseEvent) {
   onDragStart(e)
 }
 
+function saveState() {
+  localStorage.setItem(stateKey, JSON.stringify({
+    mode: mode.value,
+    running: running.value,
+    deadline: running.value ? deadline.value : 0,
+    remaining: remaining.value,
+  }))
+}
+
+// Desktop notifications — fire even when the tab is in the background
+const notificationsEnabled = ref(localStorage.getItem('pomodoro-notify') !== 'false')
+watch(notificationsEnabled, (v) => localStorage.setItem('pomodoro-notify', String(v)))
+
+async function ensureNotifyPermission() {
+  if (!notificationsEnabled.value) return
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission()
+  }
+}
+
+function notify(title: string, body: string) {
+  if (!notificationsEnabled.value) return
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  try { new Notification(title, { body }) } catch { /* ignore */ }
+}
+
+async function toggleNotify() {
+  notificationsEnabled.value = !notificationsEnabled.value
+  if (notificationsEnabled.value) await ensureNotifyPermission()
+}
+
+function startTimer() {
+  if (timer) return
+  deadline.value = Date.now() + remaining.value * 1000
+  running.value = true
+  timer = setInterval(tick, 1000)
+  saveState()
+  ensureNotifyPermission()
+}
+
 function tick() {
-  if (remaining.value <= 0) return
-  remaining.value--
+  // Compute from the absolute deadline so it stays accurate across refresh
+  remaining.value = Math.max(Math.round((deadline.value - Date.now()) / 1000), 0)
   if (remaining.value <= 0) {
     clearInterval(timer!)
     timer = null
@@ -57,10 +120,13 @@ function tick() {
     if (mode.value === 'focus') {
       mode.value = 'break'
       remaining.value = breakSec.value
+      notify('🍅 专注结束', `休息一下，${breakMin.value} 分钟`)
     } else {
       mode.value = 'focus'
       remaining.value = focusSec.value
+      notify('☕ 休息结束', `开始下一轮专注，${focusMin.value} 分钟`)
     }
+    saveState()
   }
 }
 
@@ -69,9 +135,9 @@ function toggleTimer() {
     clearInterval(timer!)
     timer = null
     running.value = false
+    saveState()
   } else {
-    running.value = true
-    timer = setInterval(tick, 1000)
+    startTimer()
   }
 }
 
@@ -81,6 +147,7 @@ function resetTimer() {
   running.value = false
   mode.value = 'focus'
   remaining.value = focusSec.value
+  saveState()
 }
 
 onUnmounted(() => {
@@ -109,6 +176,7 @@ function playBeep() {
 <template>
   <div class="pomodoro" :class="[mode, { running }]" :style="{ left: x + 'px', top: y + 'px' }">
     <DragBar variant="header" :on-drag-start="handleDragStart" :title="mode === 'focus' ? '🍅 专注' : '☕ 休息'" :editable="false">
+      <button class="pom-gear-btn" :class="{ on: notificationsEnabled }" @click="toggleNotify" title="桌面通知" style="margin-right: 6px">🔔</button>
       <button class="pom-gear-btn" @click="openSettings" title="配置时间">⚙</button>
     </DragBar>
 
@@ -186,6 +254,7 @@ function playBeep() {
   transition: all 0.2s;
 }
 .pom-gear-btn:hover { background: rgba(0,0,0,0.12); color: rgba(0,0,0,0.6); }
+.pom-gear-btn.on { background: rgba(45,212,168,0.2); }
 
 /* Settings overlay */
 .pomodoro-settings-overlay {

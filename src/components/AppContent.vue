@@ -26,37 +26,45 @@ const widgetMap: Record<string, any> = {
 
 // Widget instances
 const widgets = ref<WidgetInstance[]>([])
+const loading = ref(true) // 初始加载中，显示欢迎语
 
 function getCacheKey() { return `widgets-cache-${selectedProjectId.value}` }
 
-// 1. 先渲染缓存，秒开
-function loadCachedWidgets() {
-  if (!selectedProjectId.value) { widgets.value = []; return }
+async function initWidgets() {
+  if (!selectedProjectId.value) { widgets.value = []; loading.value = false; return }
+
+  // 并行：缓存读取 + DB 查询 + 最短显示时间
+  const MIN_SHOW = 400 // 欢迎语至少显示 400ms
+  const start = Date.now()
+
+  // 1. 先从缓存取，让组件尽快渲染
   const cached = localStorage.getItem(getCacheKey())
   if (cached) {
     try { widgets.value = JSON.parse(cached) } catch { /* ignore */ }
   }
-}
 
-// 2. 后台从 IndexedDB 加载最新数据
-async function loadWidgets() {
-  if (!selectedProjectId.value) { widgets.value = []; return }
+  // 2. 从 DB 加载最新数据
   const fresh = await getWidgets(selectedProjectId.value)
   widgets.value = fresh
   localStorage.setItem(getCacheKey(), JSON.stringify(fresh))
+
+  // 3. 确保最短显示时间
+  const elapsed = Date.now() - start
+  if (elapsed < MIN_SHOW) {
+    await new Promise(r => setTimeout(r, MIN_SHOW - elapsed))
+  }
+
+  loading.value = false
 }
 
 function updateWidgetCache() {
   localStorage.setItem(getCacheKey(), JSON.stringify(widgets.value))
 }
 
-onMounted(() => {
-  loadCachedWidgets()  // 立即渲染
-  loadWidgets()         // 后台同步
-})
+onMounted(initWidgets)
 watch(selectedProjectId, () => {
-  loadCachedWidgets()
-  loadWidgets()
+  loading.value = true
+  initWidgets()
 })
 
 const sceneRef = ref<HTMLElement>()
@@ -202,6 +210,14 @@ watch(weatherWallpaper, async (on) => {
       <!-- Add widget button -->
       <button class="add-widget-btn" @click="showGallery = true; selectedType = ''" title="添加组件">＋</button>
 
+      <!-- Welcome greeting: shown while loading or when no widgets -->
+      <div v-if="loading || widgets.length === 0" class="welcome-greeting">
+        <span class="greeting-emoji">👋</span>
+        <span class="greeting-text">你好</span>
+        <span class="greeting-sub" v-if="loading">加载中...</span>
+        <span class="greeting-sub" v-else>点击 ＋ 添加你的第一个组件</span>
+      </div>
+
       <!-- Dynamic widgets -->
       <WidgetWrapper
         v-for="w in widgets"
@@ -291,4 +307,17 @@ watch(weatherWallpaper, async (on) => {
   z-index: 50; pointer-events: none;
 }
 @media (max-width: 1000px) { .pen { display: none; } }
+
+/* Welcome greeting */
+.welcome-greeting {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; z-index: 30; pointer-events: none;
+  animation: greet-in 0.6s ease;
+}
+.greeting-emoji { font-size: 64px; animation: greet-wave 0.6s ease; }
+.greeting-text { font-size: 2rem; font-weight: 700; color: rgba(0,0,0,0.5); letter-spacing: 2px; }
+.greeting-sub { font-size: 0.85rem; color: rgba(0,0,0,0.3); margin-top: 4px; }
+@keyframes greet-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes greet-wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(20deg); } 50% { transform: rotate(-10deg); } 75% { transform: rotate(15deg); } }
 </style>
