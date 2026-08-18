@@ -194,28 +194,28 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   align-items: center;
   gap: 3px;
   padding: 5px 9px;
-  border-radius: 8px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-soft);
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
 }
 .se-engine-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.15);
+  background: var(--color-surface);
+  border-color: var(--color-ink-3);
   transform: translateY(-1px);
 }
 .se-engine-btn.active {
-  background: rgba(45, 212, 168, 0.12);
-  border-color: #2DD4A8;
-  box-shadow: 0 0 0 2px rgba(45, 212, 168, 0.15);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 .se-engine-btn.default {
   border-style: solid;
 }
 .se-engine-icon { font-size: 15px; line-height: 1; }
-.se-engine-name { font-size: 0.68rem; font-weight: 600; color: #555; }
+.se-engine-name { font-size: 0.68rem; font-weight: 600; color: var(--color-ink-2); }
 
 .se-default-badge {
   position: absolute;
@@ -224,7 +224,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   font-size: 0.5rem;
   font-weight: 700;
   color: #fff;
-  background: #2DD4A8;
+  background: var(--color-primary);
   padding: 1px 5px;
   border-radius: 6px;
   line-height: 1.4;
@@ -237,16 +237,16 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 10px;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
   padding: 0 10px;
-  border: 1.5px solid rgba(0, 0, 0, 0.06);
+  border: 1.5px solid var(--color-border);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .se-input-row:focus-within {
-  border-color: #2DD4A8;
-  box-shadow: 0 0 0 3px rgba(45, 212, 168, 0.1);
-  background: rgba(255, 255, 255, 0.8);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  background: var(--color-surface);
 }
 .se-active-engine {
   font-size: 18px;
@@ -260,18 +260,18 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   background: transparent;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #333;
+  color: var(--color-ink);
   padding: 9px 0;
-  font-family: -apple-system, 'PingFang SC', sans-serif;
+  font-family: var(--font-family);
   min-width: 0;
 }
-.se-input::placeholder { color: #bbb; font-weight: 400; }
+.se-input::placeholder { color: var(--color-ink-3); font-weight: 400; }
 .se-search-btn {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
-  background: #2DD4A8;
+  background: var(--color-primary);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -280,13 +280,13 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   transition: all 0.2s;
   flex-shrink: 0;
 }
-.se-search-btn:hover:not(:disabled) { background: #26C498; transform: scale(1.05); }
+.se-search-btn:hover:not(:disabled) { background: var(--color-primary-hover); transform: scale(1.05); }
 .se-search-btn:active:not(:disabled) { transform: scale(0.95); }
 .se-search-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* History */
 .se-history {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--color-border);
   padding-top: 6px;
 }
 .se-history-header {
@@ -295,7 +295,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   align-items: center;
   padding: 0 2px 4px;
   font-size: 0.7rem;
-  color: #999;
+  color: var(--color-ink-3);
   font-weight: 600;
 }
 .se-history-clear {
@@ -303,22 +303,19 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   background: none;
   cursor: pointer;
   font-size: 0.65rem;
-  color: #ccc;
+  color: var(--color-ink-3);
   font-family: inherit;
   transition: color 0.2s;
   padding: 0;
 }
-.se-history-clear:hover { color: #e74c3c; }
+.se-history-clear:hover { color: var(--color-danger); }
 
 .se-history-list {
   height: 152px; /* fixed: ~4 items at 38px each */
   overflow-y: auto;
   scroll-behavior: smooth;
+  /* 滚动条统一走全局 5px token */
 }
-.se-history-list::-webkit-scrollbar { width: 4px; }
-.se-history-list::-webkit-scrollbar-track { background: transparent; border-radius: 2px; }
-.se-history-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 2px; }
-.se-history-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
 
 .se-history-item {
   display: flex;
@@ -331,6 +328,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   font-size: 0.78rem;
 }
 .se-history-item:hover { background: rgba(0, 0, 0, 0.03); }
+html.dark .se-history-item:hover { background: rgba(255, 255, 255, 0.05); }
 
 .se-history-engine {
   font-size: 16px;
@@ -340,7 +338,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
 }
 .se-history-query {
   flex: 1;
-  color: #444;
+  color: var(--color-ink);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -349,7 +347,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
 }
 .se-history-time {
   font-size: 0.6rem;
-  color: #bbb;
+  color: var(--color-ink-3);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -361,7 +359,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   background: rgba(0, 0, 0, 0.08);
   cursor: pointer;
   font-size: 8px;
-  color: #aaa;
+  color: var(--color-ink-3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -370,7 +368,8 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   transition: opacity 0.15s, background 0.15s;
 }
 .se-history-item:hover .se-history-del { opacity: 1; }
-.se-history-del:hover { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+.se-history-del:hover { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+html.dark .se-history-del { background: rgba(255, 255, 255, 0.12); }
 
 .se-history-empty {
   display: flex;
@@ -378,7 +377,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   justify-content: center;
   height: 100%;
   font-size: 0.75rem;
-  color: #d0d0d0;
+  color: var(--color-ink-3);
   user-select: none;
 }
 
@@ -387,7 +386,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   text-align: center;
   padding: 0 14px 10px;
   font-size: 0.6rem;
-  color: #ccc;
+  color: var(--color-ink-3);
   user-select: none;
 }
 </style>

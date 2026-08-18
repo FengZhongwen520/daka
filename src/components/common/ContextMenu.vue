@@ -20,14 +20,15 @@ defineProps<{
   </Teleport>
 </template>
 
-<style>
+<style scoped>
 .context-menu {
   position: fixed;
   z-index: 9999;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-surface);
   backdrop-filter: blur(12px);
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
   padding: 4px;
   min-width: 120px;
 }

@@ -171,7 +171,7 @@ async function onToggleDay(day: CalendarDay) {
                 'today': day.isToday,
                 'checked': checkedDates.has(day.date),
               }"
-              :style="checkedDates.has(day.date) ? { '--check-color': project?.color || '#1dd1a1' } : {}"
+              :style="checkedDates.has(day.date) ? { '--check-color': project?.color || 'var(--color-primary)' } : {}"
               @click="onToggleDay(day)"
             >
               <template v-if="day.isCurrentMonth">{{ day.day }}</template>
@@ -206,9 +206,9 @@ async function onToggleDay(day: CalendarDay) {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: #fff;
+  background: var(--color-paper);
   border-radius: 5px 15px 15px 5px;
-  box-shadow: 2px 0 0 #ddd, 20px 30px 50px rgba(0,0,0,0.35);
+  box-shadow: 2px 0 0 var(--color-line), 20px 30px 50px rgba(0,0,0,0.35);
   overflow: hidden;
 }
 
@@ -218,7 +218,7 @@ async function onToggleDay(day: CalendarDay) {
   height: 100%;
   top: 0;
   left: 0;
-  background: #fdfdfd;
+  background: var(--color-paper);
   border-radius: 5px 15px 15px 5px;
   transform-origin: left center;
   transition: transform 0.8s cubic-bezier(0.645, 0.045, 0.355, 1);
@@ -235,7 +235,7 @@ async function onToggleDay(day: CalendarDay) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
+  background-image: radial-gradient(var(--color-line) 1px, transparent 1px);
   background-size: 28px 28px;
   overflow: hidden;
 }
@@ -246,7 +246,7 @@ async function onToggleDay(day: CalendarDay) {
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 10px;
-  border-bottom: 3px solid #2d3436;
+  border-bottom: 3px solid var(--color-ink);
   padding-bottom: 6px;
   flex-shrink: 0;
 }
@@ -255,31 +255,31 @@ async function onToggleDay(day: CalendarDay) {
 .header-nav-btn {
   width: 32px; height: 32px;
   border-radius: 50%;
-  border: 1.5px solid #e0e0e0;
-  background: #fafafa;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
   cursor: pointer;
   font-size: 16px;
-  color: #999;
+  color: var(--color-ink-3);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
 }
 .header-nav-btn:hover {
-  background: #f0f0f0;
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  background: var(--color-surface-soft);
+  color: var(--color-coral);
+  border-color: var(--color-coral);
 }
 .month-name {
   font-size: 2.5rem;
   font-weight: 900;
-  color: #ff6b6b;
+  color: var(--color-coral);
   line-height: 0.85;
   letter-spacing: 2px;
 }
 .year-name {
   font-size: 1.3rem;
-  color: #bdc3c7;
+  color: var(--color-ink-3);
   font-weight: 300;
 }
 
@@ -295,7 +295,7 @@ async function onToggleDay(day: CalendarDay) {
 .weekday {
   text-align: center;
   font-weight: 800;
-  color: #d1d8e0;
+  color: var(--color-ink-3);
   font-size: 0.8rem;
   padding-bottom: 2px;
 }
@@ -306,7 +306,7 @@ async function onToggleDay(day: CalendarDay) {
   justify-content: center;
   font-size: 1rem;
   font-weight: 600;
-  color: #2d3436;
+  color: var(--color-ink);
   cursor: pointer;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
@@ -314,13 +314,14 @@ async function onToggleDay(day: CalendarDay) {
 .day:hover:not(.empty) {
   background: rgba(0,0,0,0.04);
 }
+html.dark .day:hover:not(.empty) { background: rgba(255,255,255,0.08); }
 .day.empty { visibility: hidden; }
-.day.checked { color: var(--check-color, #1dd1a1); }
+.day.checked { color: var(--check-color, var(--color-primary)); }
 .day.checked::before {
   content: '';
   position: absolute;
   width: 75%; height: 75%;
-  border: 3px solid var(--check-color, #1dd1a1);
+  border: 3px solid var(--check-color, var(--color-primary));
   border-radius: 52% 48% 51% 49% / 48% 52% 49% 51%;
   transform: rotate(-10deg);
   animation: drawCircle 0.4s ease-out forwards;
@@ -330,28 +331,28 @@ async function onToggleDay(day: CalendarDay) {
   from { opacity: 0; transform: scale(1.5) rotate(-30deg); }
   to { opacity: 1; transform: scale(1) rotate(-10deg); }
 }
-.day.today { color: #ff6b6b; }
+.day.today { color: var(--color-coral); }
 .day.today::after {
   content: '';
   position: absolute;
   bottom: 3px; left: 50%; transform: translateX(-50%);
   width: 5px; height: 5px;
   border-radius: 50%;
-  background: #ff6b6b;
+  background: var(--color-coral);
 }
 
-/* Book base (deep) */
+/* Book base (deep) — 翻页时的底层静态页 */
 :deep(.book-base .calendar-header) {
   display: flex; justify-content: space-between; align-items: flex-end;
-  margin-bottom: 10px; border-bottom: 3px solid #2d3436;
+  margin-bottom: 10px; border-bottom: 3px solid var(--color-ink);
   padding: 20px 30px 6px;
 }
-:deep(.book-base .month-name) { font-size: 2.5rem; font-weight: 900; color: #ddd; line-height: 0.85; }
-:deep(.book-base .year-name) { font-size: 1.3rem; color: #ddd; font-weight: 300; }
+:deep(.book-base .month-name) { font-size: 2.5rem; font-weight: 900; color: var(--color-ink-3); line-height: 0.85; }
+:deep(.book-base .year-name) { font-size: 1.3rem; color: var(--color-ink-3); font-weight: 300; }
 :deep(.book-base .calendar-grid) { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; padding: 0 30px; }
-:deep(.book-base .weekday) { text-align: center; font-weight: 800; color: #ddd; font-size: 0.8rem; }
-:deep(.book-base .day) { display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; color: #ddd; }
+:deep(.book-base .weekday) { text-align: center; font-weight: 800; color: var(--color-ink-3); font-size: 0.8rem; }
+:deep(.book-base .day) { display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; color: var(--color-ink-3); }
 :deep(.book-base .day.empty) { visibility: hidden; }
-:deep(.book-base .day.today) { color: #ff6b6b; }
-:deep(.book-base .day.checked) { color: #1dd1a1; }
+:deep(.book-base .day.today) { color: var(--color-coral); }
+:deep(.book-base .day.checked) { color: var(--color-primary); }
 </style>

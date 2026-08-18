@@ -366,25 +366,26 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 20, 300, true)
 </template>
 
 <style scoped>
+/* 木制收音机 — 深色木纹在明暗主题下保持实体感（实体物件不反转） */
 .whitenoise {
   position: absolute;
   width: 280px; height: 266px;
-  background: #3d2b1f;
+  background: var(--color-wood-dark);
   background-image:
     linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 50%, rgba(0,0,0,0.1) 100%),
     repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.05) 8px, rgba(0,0,0,0.05) 9px);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow:
-    4px 4px 0 #2a1a0e,
+    4px 4px 0 color-mix(in srgb, var(--color-wood-dark) 70%, #000),
     8px 10px 24px rgba(0,0,0,0.35);
   z-index: 57;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 2px solid #5a3d2b;
+  border: 2px solid var(--color-wood);
 }
 
-/* DragBar dark theme override */
+/* DragBar 覆盖保留：木面在两种主题下都是深色，标题栏必须保持深色以获得对比度 */
 .whitenoise:deep(.drag-bar--header) {
   background: rgba(0, 0, 0, 0.25);
   border-bottom-color: rgba(255, 255, 255, 0.08);
@@ -397,10 +398,10 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 20, 300, true)
 .wn-playing-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #4f8;
+  background: var(--color-primary);
   margin-left: auto;
   animation: blink-dot 1s infinite;
-  box-shadow: 0 0 6px #4f8;
+  box-shadow: 0 0 6px var(--color-primary);
 }
 @keyframes blink-dot {
   0%, 100% { opacity: 1; }
@@ -450,10 +451,10 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 20, 300, true)
 }
 .wn-sound-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
 .wn-sound-btn.active {
-  background: rgba(255,180,60,0.15);
-  border-color: rgba(255,180,60,0.5);
-  color: #ffb83c;
-  box-shadow: 0 0 12px rgba(255,180,60,0.2);
+  background: var(--status-idle-soft);
+  border-color: var(--status-idle);
+  color: var(--status-idle);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--status-idle) 20%, transparent);
 }
 
 .sound-icon { font-size: 22px; }

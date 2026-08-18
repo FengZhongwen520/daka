@@ -28,10 +28,11 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 80, 12)
 </template>
 
 <style scoped>
+/* Physical paper object — yellow note stays light in both themes */
 .sticky-note {
   position: absolute; width: 180px; min-height: 80px; padding: 26px 12px 14px;
   background: #fff385; transform: rotate(-3deg);
-  box-shadow: 8px 8px 16px rgba(0,0,0,0.2); z-index: 56;
+  box-shadow: var(--shadow-paper); z-index: 56;
   border-bottom-right-radius: 60px 5px;
 }
 .sticky-note:hover :deep(.drag-bar--overlay) { opacity: 1; }

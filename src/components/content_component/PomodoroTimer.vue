@@ -183,9 +183,8 @@ function playBeep() {
     <!-- Circle timer -->
     <div class="pomodoro-body">
       <svg class="progress-ring" viewBox="0 0 160 160">
-        <circle class="ring-bg" cx="80" cy="80" r="70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="8" />
+        <circle class="ring-bg" cx="80" cy="80" r="70" fill="none" stroke-width="8" />
         <circle class="ring-fg" cx="80" cy="80" r="70" fill="none"
-          :stroke="mode === 'focus' ? '#ff6b6b' : '#2DD4A8'"
           stroke-width="8" stroke-linecap="round"
           :stroke-dasharray="circumference"
           :stroke-dashoffset="circumference * (1 - progress)"
@@ -225,48 +224,54 @@ function playBeep() {
 .pomodoro {
   position: absolute;
   width: 180px;
-  border-radius: 12px;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.08), 6px 8px 20px rgba(0,0,0,0.15);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-paper);
   z-index: 57;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: background 0.6s ease, box-shadow 0.6s ease;
 }
-.pomodoro.focus { background: linear-gradient(180deg, #fff5f5 0%, #fff 40%); }
+.pomodoro.focus { background: linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 5%, #fff) 0%, #fff 40%); }
 .pomodoro.focus.running {
-  background: linear-gradient(180deg, #ffe8e8 0%, #fff0f0 30%, #fff 70%);
-  box-shadow: 2px 2px 0 rgba(255,100,100,0.15), 6px 8px 24px rgba(255,107,107,0.25);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 9%, #fff) 0%, color-mix(in srgb, var(--color-coral) 4%, #fff) 30%, #fff 70%);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-coral) 15%, transparent), 6px 8px 24px color-mix(in srgb, var(--color-coral) 25%, transparent);
 }
-.pomodoro.break { background: linear-gradient(180deg, #f0fdf8 0%, #fff 40%); }
+.pomodoro.break { background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #fff) 0%, #fff 40%); }
 .pomodoro.break.running {
-  background: linear-gradient(180deg, #e0faf0 0%, #edfdf6 30%, #fff 70%);
-  box-shadow: 2px 2px 0 rgba(45,212,168,0.15), 6px 8px 24px rgba(45,212,168,0.2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 11%, #fff) 0%, color-mix(in srgb, var(--color-primary) 5%, #fff) 30%, #fff 70%);
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-primary) 15%, transparent), 6px 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
+
+/* 暗色纸面 — 专注/休息 保留色调但使用深色底 */
+html.dark .pomodoro.focus { background: linear-gradient(180deg, #2b2426 0%, #232228 40%); }
+html.dark .pomodoro.focus.running { background: linear-gradient(180deg, #35272a 0%, #2a2529 30%, #232228 70%); }
+html.dark .pomodoro.break { background: linear-gradient(180deg, #1e2a26 0%, #22242a 40%); }
+html.dark .pomodoro.break.running { background: linear-gradient(180deg, #1d332c 0%, #202a29 30%, #22242a 70%); }
 
 .pom-gear-btn {
   margin-left: auto;
   width: 20px; height: 20px;
   border: none; background: rgba(0,0,0,0.06);
   border-radius: 50%; cursor: pointer;
-  font-size: 11px; color: rgba(0,0,0,0.35);
+  font-size: 11px; color: var(--color-ink-3);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.pom-gear-btn:hover { background: rgba(0,0,0,0.12); color: rgba(0,0,0,0.6); }
-.pom-gear-btn.on { background: rgba(45,212,168,0.2); }
+.pom-gear-btn:hover { background: rgba(0,0,0,0.12); color: var(--color-ink-2); }
+.pom-gear-btn.on { background: var(--color-primary-soft); }
 
 /* Settings overlay */
 .pomodoro-settings-overlay {
   position: absolute;
   inset: 26px 0 0 0;
-  background: rgba(255,255,255,0.95);
+  background: var(--color-surface);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 .pomodoro-settings {
   display: flex;
@@ -274,7 +279,7 @@ function playBeep() {
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: #555;
+  color: var(--color-ink-2);
   padding: 8px;
 }
 .pom-close-btn {
@@ -283,7 +288,7 @@ function playBeep() {
   width: 20px; height: 20px;
   border: none; background: rgba(0,0,0,0.06);
   border-radius: 50%; cursor: pointer;
-  font-size: 10px; color: #999;
+  font-size: 10px; color: var(--color-ink-3);
   display: flex; align-items: center; justify-content: center;
 }
 .pom-close-btn:hover { background: rgba(0,0,0,0.12); }
@@ -293,23 +298,33 @@ function playBeep() {
 .settings-row input {
   width: 60px;
   padding: 4px 6px;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 6px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   text-align: center;
   font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
-.settings-row input:focus { border-color: #ff6b6b; outline: none; }
-.settings-row span { font-size: 0.75rem; color: #999; }
+.settings-row input:focus { border-color: var(--color-coral); outline: none; }
+.settings-row span { font-size: 0.75rem; color: var(--color-ink-3); }
 
 .pom-save {
   margin-top: 4px;
   width: 36px; height: 36px;
-  background: #ff6b6b !important;
-  color: #fff !important;
-  border: none !important;
+  background: var(--color-coral);
+  color: #fff;
+  border: none;
 }
-.pomodoro.break .pom-save { background: #2DD4A8 !important; }
+.pomodoro.break .pom-save { background: var(--color-primary); }
+
+/* Dark mode */
+html.dark .pom-gear-btn { background: rgba(255,255,255,0.1); }
+html.dark .pom-gear-btn:hover { background: rgba(255,255,255,0.16); }
+html.dark .pom-close-btn { background: rgba(255,255,255,0.1); }
+html.dark .pom-close-btn:hover { background: rgba(255,255,255,0.16); }
+html.dark .pomodoro-settings-overlay { background: rgba(24,26,32,0.95); }
+html.dark .settings-row input { background: rgba(255,255,255,0.05); }
 
 .pomodoro-body {
   position: relative;
@@ -319,39 +334,43 @@ function playBeep() {
   padding: 10px 0 4px;
 }
 .progress-ring { width: 130px; height: 130px; }
+.ring-bg { stroke: rgba(0,0,0,0.06); }
+html.dark .ring-bg { stroke: rgba(255,255,255,0.15); }
 .ring-fg {
+  stroke: var(--color-coral);
   transition: stroke-dashoffset 0.3s linear, stroke 0.3s;
-  filter: drop-shadow(0 0 4px rgba(255,107,107,0.3));
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-coral) 30%, transparent));
 }
-.pomodoro.break .ring-fg { filter: drop-shadow(0 0 4px rgba(45,212,168,0.3)); }
-.pomodoro.running .ring-fg { filter: drop-shadow(0 0 8px rgba(255,107,107,0.5)); }
-.pomodoro.break.running .ring-fg { filter: drop-shadow(0 0 8px rgba(45,212,168,0.5)); }
+.pomodoro.break .ring-fg { stroke: var(--color-primary); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-primary) 30%, transparent)); }
+.pomodoro.running .ring-fg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-coral) 50%, transparent)); }
+.pomodoro.break.running .ring-fg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 50%, transparent)); }
 
 .time-display { position: absolute; display: flex; align-items: center; gap: 2px; }
 .time-num {
-  font-size: 2.1rem; font-weight: 800; color: #2d3436;
+  font-size: 2.1rem; font-weight: 800; color: var(--color-ink);
   font-variant-numeric: tabular-nums; width: 45px; text-align: center;
+  font-family: var(--font-mono);
 }
-.time-colon { font-size: 1.8rem; font-weight: 600; color: #999; }
+.time-colon { font-size: 1.8rem; font-weight: 600; color: var(--color-ink-3); }
 
 .pomodoro-controls {
   display: flex; justify-content: center; align-items: center; gap: 12px; padding: 4px 0 14px;
 }
 .pom-btn {
   width: 38px; height: 38px; border-radius: 50%;
-  border: 1.5px solid #e0e0e0; background: #fff;
-  cursor: pointer; font-size: 16px; color: #888;
+  border: 1.5px solid var(--color-border); background: var(--color-surface);
+  cursor: pointer; font-size: 16px; color: var(--color-ink-2);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.pom-btn:hover { background: #f5f5f5; color: #555; transform: scale(1.05); }
+.pom-btn:hover { background: var(--color-surface-soft); color: var(--color-ink); transform: scale(1.05); }
 .pom-btn:active { transform: scale(0.95); }
 
-.pomodoro.focus .pom-btn { border-color: rgba(255,107,107,0.2); }
-.pomodoro.focus .pom-btn:hover { background: #fff0f0; color: #ff6b6b; }
-.pomodoro.focus.running .pom-btn { border-color: rgba(255,107,107,0.3); color: #ff6b6b; }
+.pomodoro.focus .pom-btn { border-color: color-mix(in srgb, var(--color-coral) 20%, transparent); }
+.pomodoro.focus .pom-btn:hover { background: color-mix(in srgb, var(--color-coral) 6%, var(--color-surface)); color: var(--color-coral); }
+.pomodoro.focus.running .pom-btn { border-color: color-mix(in srgb, var(--color-coral) 30%, transparent); color: var(--color-coral); }
 
-.pomodoro.break .pom-btn { border-color: rgba(45,212,168,0.2); }
-.pomodoro.break .pom-btn:hover { background: #f0fdf8; color: #2DD4A8; }
-.pomodoro.break.running .pom-btn { border-color: rgba(45,212,168,0.3); color: #2DD4A8; }
+.pomodoro.break .pom-btn { border-color: color-mix(in srgb, var(--color-primary) 20%, transparent); }
+.pomodoro.break .pom-btn:hover { background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); color: var(--color-primary); }
+.pomodoro.break.running .pom-btn { border-color: color-mix(in srgb, var(--color-primary) 30%, transparent); color: var(--color-primary); }
 </style>

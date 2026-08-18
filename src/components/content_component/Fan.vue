@@ -97,21 +97,21 @@ watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
   margin-left: auto;
   width: 22px; height: 22px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
-  background: rgba(0, 0, 0, 0.05);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-soft);
   cursor: pointer;
   font-size: 10px;
-  color: #999;
+  color: var(--color-ink-3);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
   padding: 0;
   line-height: 1;
 }
 .fan-power-btn.on {
-  background: #2DD4A8;
-  border-color: #2DD4A8;
+  background: var(--color-primary);
+  border-color: var(--color-primary);
   color: #fff;
-  box-shadow: 0 0 8px rgba(45, 212, 168, 0.4);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
 .fan-power-btn:hover { transform: scale(1.1); }
 
@@ -354,24 +354,24 @@ watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
 }
 .fan-speed-btn {
   padding: 6px 16px;
-  border-radius: 8px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-soft);
   cursor: pointer;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #888;
+  color: var(--color-ink-2);
   font-family: inherit;
   transition: all 0.2s;
 }
 .fan-speed-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.15);
+  background: var(--color-surface);
+  border-color: var(--color-ink-3);
 }
 .fan-speed-btn.active {
-  background: rgba(45, 212, 168, 0.12);
-  border-color: #2DD4A8;
-  color: #2DD4A8;
-  box-shadow: 0 0 0 2px rgba(45, 212, 168, 0.12);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-soft);
 }
 </style>

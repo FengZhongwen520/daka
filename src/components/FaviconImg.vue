@@ -100,7 +100,7 @@ onUnmounted(() => {
 .favicon-img {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: opacity 0.25s ease;
 }
 .favicon-img.invisible {
@@ -113,8 +113,8 @@ onUnmounted(() => {
 .favicon-skeleton {
   width: 24px;
   height: 24px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-surface-soft) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
 }
@@ -128,7 +128,7 @@ onUnmounted(() => {
 .favicon-fallback {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: 6px;
   color: #fff;
   font-weight: 700;
   font-size: 12px;

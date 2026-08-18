@@ -27,6 +27,22 @@ watch(weatherWallpaper, (v) => {
   localStorage.setItem('weather-wallpaper', String(v))
 })
 
+// Theme (light / dark)
+export type ThemeMode = 'light' | 'dark'
+export const themeMode = ref<ThemeMode>((localStorage.getItem('theme-mode') as ThemeMode) || 'light')
+
+function applyTheme() {
+  document.documentElement.classList.toggle('dark', themeMode.value === 'dark')
+}
+watch(themeMode, (m) => {
+  localStorage.setItem('theme-mode', m)
+  applyTheme()
+}, { immediate: true })
+
+export function toggleTheme() {
+  themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
+}
+
 export function selectProject(id: number) {
   selectedProjectId.value = id
   localStorage.setItem('last-project', String(id))

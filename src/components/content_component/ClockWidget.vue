@@ -135,8 +135,8 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   line-height: 1;
 }
 .cl-mode-btn:hover {
-  background: rgba(45, 212, 168, 0.12);
-  border-color: #2DD4A8;
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
 }
 
 /* Body — fixed height prevents layout shift between modes */
@@ -171,35 +171,35 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   width: 44px;
   height: 54px;
   background: rgba(0, 0, 0, 0.04);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 1.7rem;
   font-weight: 800;
-  color: #2d3436;
+  color: var(--color-ink);
   font-variant-numeric: tabular-nums;
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 1px;
 }
 .cl-time-colon {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #2DD4A8;
+  color: var(--color-primary);
   width: 12px;
   text-align: center;
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono);
 }
 .cl-date {
   font-size: 0.68rem;
   font-weight: 600;
-  color: #999;
+  color: var(--color-ink-3);
   letter-spacing: 0.3px;
 }
 .cl-period {
   font-size: 0.62rem;
   font-weight: 700;
-  color: #2DD4A8;
-  background: rgba(45, 212, 168, 0.1);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
   padding: 1px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* === Analog === */
@@ -216,8 +216,8 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   width: 145px;
   height: 145px;
   border-radius: 50%;
-  background: radial-gradient(circle at center, #fdfdfd 0%, #f5f5f5 100%);
-  border: 2.5px solid #e8e8e8;
+  background: radial-gradient(circle at center, var(--color-paper) 0%, var(--color-surface-soft) 100%);
+  border: 2.5px solid var(--color-line);
   box-shadow:
     inset 0 2px 6px rgba(0, 0, 0, 0.06),
     0 3px 12px rgba(0, 0, 0, 0.08),
@@ -236,7 +236,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   display: block;
   width: 1.5px;
   height: 5px;
-  background: #ccc;
+  background: var(--color-ink-3);
   border-radius: 1px;
   margin-left: -0.75px;
   margin-top: -2.5px;
@@ -244,7 +244,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
 .cl-tick-dot.major {
   width: 2px;
   height: 8px;
-  background: #aaa;
+  background: var(--color-ink-2);
   margin-left: -1px;
   margin-top: -4px;
 }
@@ -267,7 +267,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   justify-content: center;
   font-size: 0.68rem;
   font-weight: 700;
-  color: #666;
+  color: var(--color-ink-2);
 }
 
 /* Hands */
@@ -283,21 +283,21 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   width: 3.5px;
   height: 33px;
   margin-left: -1.75px;
-  background: #444;
+  background: var(--color-ink);
   border-radius: 3px;
 }
 .cl-hand.minute {
   width: 2.5px;
   height: 49px;
   margin-left: -1.25px;
-  background: #666;
+  background: var(--color-ink-2);
   border-radius: 2px;
 }
 .cl-hand.second {
   width: 1.5px;
   height: 58px;
   margin-left: -0.75px;
-  background: #2DD4A8;
+  background: var(--color-primary);
   border-radius: 1px;
   z-index: 3;
   transition: transform 0.05s linear;
@@ -311,15 +311,26 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 700, 80, false)
   height: 8px;
   margin-left: -4px;
   margin-top: -4px;
-  background: #2DD4A8;
+  background: var(--color-primary);
   border-radius: 50%;
   z-index: 4;
-  box-shadow: 0 0 0 3px rgba(45, 212, 168, 0.2);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
 .cl-analog-date {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #999;
+  color: var(--color-ink-3);
+}
+
+/* === Dark mode === */
+html.dark .cl-mode-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+html.dark .cl-time-seg { background: rgba(255, 255, 255, 0.08); }
+html.dark .cl-face {
+  background: radial-gradient(circle at center, #2b3038 0%, #22262c 100%);
+  border-color: #3a4048;
 }
 </style>

@@ -148,7 +148,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 </script>
 
 <template>
-  <div class="weather-fx" :class="{ 'is-window': viewMode === 'window', ['wx-' + condition]: viewMode === 'window' }" :style="{ left: x + 'px', top: y + 'px' }">
+  <div class="weather-fx widget-card" :class="{ 'is-window': viewMode === 'window', ['wx-' + condition]: viewMode === 'window' }" :style="{ left: x + 'px', top: y + 'px' }">
     <DragBar variant="header" :on-drag-start="onDragStart" title="🌤 天气" :editable="false">
       <button class="wf-toggle" :class="{ active: testMode }" @click="toggleTestMode" :title="testMode ? '关闭测试' : '测试天气'">
         🧪
@@ -228,12 +228,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 .weather-fx {
   position: absolute;
   width: 190px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.08), 6px 8px 20px rgba(0,0,0,0.15);
   z-index: 58;
-  overflow: hidden;
   transition: width 0.3s, height 0.3s;
 }
 .weather-fx.is-window {
@@ -242,47 +237,47 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 
 .wf-toggle {
   width: 22px; height: 22px;
-  border: none; background: rgba(0,0,0,0.06);
+  border: none; background: var(--color-surface-soft);
   border-radius: 50%; cursor: pointer;
   font-size: 12px; display: flex;
   align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.wf-toggle:hover { background: rgba(0,0,0,0.12); }
-.wf-toggle.active { background: rgba(240,200,0,0.25); box-shadow: 0 0 6px rgba(240,180,0,0.3); }
+.wf-toggle:hover { background: var(--color-surface); }
+.wf-toggle.active { background: var(--status-idle-soft); box-shadow: 0 0 6px color-mix(in srgb, var(--status-idle) 30%, transparent); }
 
 .wf-window-btn {
   width: 26px; height: 26px;
   font-size: 14px;
-  background: rgba(0,0,0,0.08);
-  border: 1.5px solid rgba(0,0,0,0.1);
+  background: var(--color-surface-soft);
+  border: 1.5px solid var(--color-border);
 }
 .wf-window-btn.active {
-  background: rgba(45,180,140,0.2);
-  border-color: rgba(45,180,140,0.4);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
 }
 
 .wf-body { padding: 10px 14px 14px; }
-.wf-loading { font-size: 0.8rem; color: #999; text-align: center; padding: 8px 0; }
+.wf-loading { font-size: 0.8rem; color: var(--color-ink-3); text-align: center; padding: 8px 0; }
 .wf-error-state {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 14px 0; color: #999; font-size: 0.78rem;
+  padding: 14px 0; color: var(--color-ink-3); font-size: 0.78rem;
 }
 .wf-error-icon { font-size: 28px; opacity: 0.5; }
 .wf-retry-btn {
-  margin-top: 4px; padding: 4px 14px; border: 1px solid #ddd;
-  border-radius: 6px; background: #fff; cursor: pointer; font-size: 0.7rem;
-  color: #666; transition: all 0.2s; font-family: inherit;
+  margin-top: 4px; padding: 4px 14px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm); background: var(--color-surface); cursor: pointer; font-size: 0.7rem;
+  color: var(--color-ink-2); transition: all 0.2s; font-family: inherit;
 }
-.wf-retry-btn:hover { border-color: #2DD4A8; color: #2DD4A8; }
+.wf-retry-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 .wf-main { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; position: relative; }
 .wf-main.test-active {
   cursor: pointer;
   padding: 4px 6px;
   margin: -4px -6px 2px;
-  border-radius: 8px;
-  border: 2px dashed #f0c929;
-  background: rgba(255,200,40,0.08);
+  border-radius: var(--radius-sm);
+  border: 2px dashed var(--status-idle);
+  background: var(--status-idle-soft);
 }
 .test-hint {
   position: absolute;
@@ -290,15 +285,20 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.6rem;
-  color: #f0c929;
+  color: var(--status-idle);
   font-weight: 700;
   white-space: nowrap;
 }
 .wf-icon { font-size: 36px; }
-.wf-temp { font-size: 2.4rem; font-weight: 800; color: #2d3436; line-height: 1; }
-.wf-condition { font-size: 0.85rem; font-weight: 700; color: #555; margin-bottom: 2px; }
-.wf-location { font-size: 0.7rem; color: #999; margin-bottom: 4px; }
-.wf-details { display: flex; gap: 12px; font-size: 0.7rem; color: #aaa; }
+.wf-temp { font-size: 2.4rem; font-weight: 800; color: var(--color-ink); line-height: 1; }
+.wf-condition { font-size: 0.85rem; font-weight: 700; color: var(--color-ink-2); margin-bottom: 2px; }
+.wf-location { font-size: 0.7rem; color: var(--color-ink-3); margin-bottom: 4px; }
+.wf-details { display: flex; gap: 12px; font-size: 0.7rem; color: var(--color-ink-3); }
+
+/* Dark mode */
+html.dark .wf-toggle { background: rgba(255,255,255,0.1); }
+html.dark .wf-toggle:hover { background: rgba(255,255,255,0.16); }
+html.dark .wf-window-btn { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.16); }
 
 /* === Window view === */
 .wf-window {
@@ -312,7 +312,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
   position: relative;
   width: 100%;
   height: 180px;
-  border: 8px solid #5d4037;
+  border: 8px solid var(--color-wood);
   border-radius: 6px;
   overflow: hidden;
   box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
@@ -442,7 +442,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
   position: absolute;
   top: 50%; left: 0; right: 0;
   height: 6px;
-  background: #5d4037;
+  background: var(--color-wood);
   transform: translateY(-50%);
   pointer-events: none;
 }
@@ -450,7 +450,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
   position: absolute;
   left: 50%; top: 0; bottom: 0;
   width: 6px;
-  background: #5d4037;
+  background: var(--color-wood);
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -460,7 +460,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
   display: flex;
   gap: 10px;
   font-size: 0.75rem;
-  color: #666;
+  color: var(--color-ink-2);
   justify-content: center;
 }
 </style>

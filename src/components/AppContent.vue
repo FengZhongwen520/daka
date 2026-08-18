@@ -22,6 +22,7 @@ const widgetMap: Record<string, any> = {
   translate: defineAsyncComponent(() => import('./content_component/TranslateBox.vue')),
   fan: defineAsyncComponent(() => import('./content_component/Fan.vue')),
   clock: defineAsyncComponent(() => import('./content_component/ClockWidget.vue')),
+  todo: defineAsyncComponent(() => import('./content_component/TodoList.vue')),
 }
 
 // Widget instances
@@ -229,7 +230,16 @@ watch(weatherWallpaper, async (on) => {
         <component :is="widgetMap[w.type]" :widget-id="w.id!" :initial-x="w.x" :initial-y="w.y" />
       </WidgetWrapper>
 
-      <div class="pen"></div>
+      <!-- Signature: a fountain pen resting on the desk -->
+      <svg class="pen-svg" viewBox="0 0 200 34" width="150" height="26" aria-hidden="true">
+        <path d="M5 17 L33 10.5 L33 23.5 Z" fill="#E6C068" />
+        <path d="M33 10.5 L46 17 L33 23.5 Z" fill="#C9A227" />
+        <line x1="14" y1="17" x2="42" y2="17" stroke="#7a5a10" stroke-width="1" />
+        <rect x="42" y="11" width="108" height="12" rx="5" fill="#2E3440" />
+        <rect x="42" y="10.5" width="7" height="13" rx="2.5" fill="#2DD4A8" />
+        <rect x="150" y="9.5" width="38" height="15" rx="4" fill="#98A2B3" />
+        <path d="M158 9.5 L163 1.5 Q169 -0.5 173 5.5 L169 9.5" fill="none" stroke="#6E7888" stroke-width="2" stroke-linecap="round" />
+      </svg>
     </div>
 
     <!-- Gallery dialog -->
@@ -256,21 +266,32 @@ watch(weatherWallpaper, async (on) => {
 </template>
 
 <style scoped>
+/* 书桌表面：亚麻纸 + 细密纸纹（自包含，无外部纹理热链） */
 .calendar-scene {
   flex: 1; position: relative;
-  background: #a4b0be;
-  background-image: url('https://www.transparenttextures.com/patterns/dark-wood.png');
+  background-color: var(--scene-linen, #F0ECE4);
+  background-image:
+    radial-gradient(rgba(31, 36, 48, 0.035) 1px, transparent 1.4px),
+    radial-gradient(ellipse at 20% -10%, rgba(255, 255, 255, 0.6) 0%, transparent 55%);
+  background-size: 26px 26px, 100% 100%;
   overflow: hidden; min-height: 500px;
-  transition: background 1.5s ease, box-shadow 1.5s ease;
+  transition: background-color 1.5s ease, box-shadow 1.5s ease;
 }
-.calendar-scene.wx-clear { background: radial-gradient(ellipse at 15% 10%, rgba(255,230,120,0.5) 0%, transparent 50%), radial-gradient(ellipse at 80% 5%, rgba(255,240,180,0.35) 0%, transparent 45%), linear-gradient(180deg, #87CEEB 0%, #b8d4e3 40%, #d4c8a8 100%); box-shadow: inset 0 0 120px rgba(255,200,80,0.15); }
-.calendar-scene.wx-cloudy { background: radial-gradient(ellipse at 30% 15%, rgba(255,240,160,0.3) 0%, transparent 50%), linear-gradient(180deg, #7eb8da 0%, #a3cce8 30%, #c5dbe8 60%, #d4c8a8 100%); box-shadow: inset 0 0 60px rgba(255,220,120,0.12); }
-.calendar-scene.wx-fog { background: linear-gradient(0deg, rgba(200,205,215,0.9) 0%, rgba(215,218,222,0.95) 60%, rgba(225,228,230,0.85) 100%); box-shadow: inset 0 0 100px rgba(255,255,255,0.3); }
-.calendar-scene.wx-drizzle { background: linear-gradient(180deg, #748594 0%, #5d6e7d 50%, #4a5a68 100%); box-shadow: inset 0 0 60px rgba(30,40,55,0.4); }
-.calendar-scene.wx-rain { background: linear-gradient(180deg, #3d4958 0%, #4a5a6a 50%, #5d6e7d 100%); box-shadow: inset 0 0 100px rgba(20,30,45,0.5); }
-.calendar-scene.wx-snow { background: linear-gradient(180deg, #c8d6e5 0%, #dfe6ed 40%, #bcc8d8 100%); box-shadow: inset 0 0 80px rgba(255,255,255,0.4); }
-.calendar-scene.wx-storm { background: linear-gradient(180deg, #2d3440 0%, #3d4555 50%, #556270 100%); box-shadow: inset 0 0 120px rgba(20,25,40,0.6); animation: storm-flash 8s infinite; }
-@keyframes storm-flash { 0%,90%,92%,96%,100%{box-shadow:inset 0 0 120px rgba(20,25,40,0.6)} 91%,91.5%{box-shadow:inset 0 0 200px rgba(255,255,255,0.4)} 95%,95.3%{box-shadow:inset 0 0 180px rgba(255,255,240,0.3)} }
+html.dark .calendar-scene {
+  background-color: #262A32;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px),
+    radial-gradient(ellipse at 20% -10%, rgba(255, 255, 255, 0.05) 0%, transparent 55%);
+}
+/* 天气色调：晴=明亮亚麻纸 / 雨=石板 / 风暴=墨黑 */
+.calendar-scene.wx-clear { background: radial-gradient(ellipse at 15% 10%, rgba(255,214,140,0.5) 0%, transparent 55%), radial-gradient(ellipse at 80% 5%, rgba(255,230,170,0.35) 0%, transparent 45%), linear-gradient(180deg, #F3EAD6 0%, #EAE0C9 45%, #DDD0B4 100%); box-shadow: inset 0 0 120px rgba(255,200,80,0.15); }
+.calendar-scene.wx-cloudy { background: radial-gradient(ellipse at 30% 15%, rgba(255,240,180,0.3) 0%, transparent 50%), linear-gradient(180deg, #E7E4DE 0%, #D8D5CE 55%, #C7C2B8 100%); box-shadow: inset 0 0 60px rgba(120,120,120,0.12); }
+.calendar-scene.wx-fog { background: linear-gradient(0deg, rgba(205,209,214,0.95) 0%, rgba(222,225,229,0.95) 60%, rgba(232,235,238,0.9) 100%); box-shadow: inset 0 0 100px rgba(255,255,255,0.3); }
+.calendar-scene.wx-drizzle { background: linear-gradient(180deg, #8A93A3 0%, #6E7888 50%, #5A6472 100%); box-shadow: inset 0 0 60px rgba(30,40,55,0.4); }
+.calendar-scene.wx-rain { background: linear-gradient(180deg, #566070 0%, #414A59 50%, #333B48 100%); box-shadow: inset 0 0 100px rgba(20,30,45,0.5); }
+.calendar-scene.wx-snow { background: linear-gradient(180deg, #E9E7E2 0%, #DDD9D2 40%, #C9C4BA 100%); box-shadow: inset 0 0 80px rgba(255,255,255,0.4); }
+.calendar-scene.wx-storm { background: linear-gradient(180deg, #242A33 0%, #2E3440 50%, #1B2026 100%); box-shadow: inset 0 0 120px rgba(10,15,25,0.7); animation: storm-flash 8s infinite; }
+@keyframes storm-flash { 0%,90%,92%,96%,100%{box-shadow:inset 0 0 120px rgba(10,15,25,0.7)} 91%,91.5%{box-shadow:inset 0 0 200px rgba(255,255,255,0.4)} 95%,95.3%{box-shadow:inset 0 0 180px rgba(255,255,240,0.3)} }
 
 .weather-canvas { position: absolute; inset: 0; z-index: 999; pointer-events: none; }
 
@@ -284,29 +305,29 @@ watch(weatherWallpaper, async (on) => {
   line-height: 1; padding: 0;
   transition: all 0.2s;
 }
-.add-widget-btn:hover { background: rgba(255,255,255,0.45); color: #2DD4A8; transform: scale(1.1); }
+.add-widget-btn:hover { background: rgba(255,255,255,0.45); color: var(--color-primary); transform: scale(1.1); }
 
 .gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .gallery-item {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 16px 8px; border-radius: 12px; cursor: pointer;
+  padding: 16px 8px; border-radius: var(--radius-md); cursor: pointer;
   border: 2px solid transparent; background: rgba(0,0,0,0.02);
   transition: all 0.2s;
 }
-.gallery-item:hover { background: rgba(45,212,168,0.06); border-color: rgba(45,212,168,0.2); }
-.gallery-item.selected { background: rgba(45,212,168,0.1); border-color: #2DD4A8; }
+.gallery-item:hover { background: var(--color-primary-soft); border-color: rgba(45,212,168,0.2); }
+.gallery-item.selected { background: var(--color-primary-soft); border-color: var(--color-primary); }
 .gallery-icon { font-size: 30px; }
-.gallery-name { font-size: 0.8rem; font-weight: 700; color: #444; }
-.gallery-desc { font-size: 0.65rem; color: #999; text-align: center; line-height: 1.3; }
+.gallery-name { font-size: 0.8rem; font-weight: 700; color: var(--color-ink-2); }
+.gallery-desc { font-size: 0.65rem; color: var(--color-ink-3); text-align: center; line-height: 1.3; }
 
-.pen {
-  position: absolute; width: 220px; height: 10px;
-  background: linear-gradient(to bottom, #333, #111, #333);
-  bottom: 5%; right: 6%; transform: rotate(20deg);
-  border-radius: 10px; box-shadow: 12px 20px 30px rgba(0,0,0,0.5);
+.pen-svg {
+  position: absolute; bottom: 4%; right: 6%;
+  transform: rotate(18deg);
+  filter: drop-shadow(4px 9px 5px rgba(0, 0, 0, 0.35));
   z-index: 50; pointer-events: none;
+  opacity: 0.92;
 }
-@media (max-width: 1000px) { .pen { display: none; } }
+@media (max-width: 1000px) { .pen-svg { display: none; } }
 
 /* Welcome greeting */
 .welcome-greeting {
@@ -316,8 +337,8 @@ watch(weatherWallpaper, async (on) => {
   animation: greet-in 0.6s ease;
 }
 .greeting-emoji { font-size: 64px; animation: greet-wave 0.6s ease; }
-.greeting-text { font-size: 2rem; font-weight: 700; color: rgba(0,0,0,0.5); letter-spacing: 2px; }
-.greeting-sub { font-size: 0.85rem; color: rgba(0,0,0,0.3); margin-top: 4px; }
+.greeting-text { font-size: 2rem; font-weight: 700; color: var(--color-ink-2); letter-spacing: 2px; }
+.greeting-sub { font-size: 0.85rem; color: var(--color-ink-3); margin-top: 4px; }
 @keyframes greet-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes greet-wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(20deg); } 50% { transform: rotate(-10deg); } 75% { transform: rotate(15deg); } }
 </style>

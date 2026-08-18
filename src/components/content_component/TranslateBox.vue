@@ -226,8 +226,8 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 
 .tr-auto-badge {
   margin-left: auto;
-  font-size: 0.55rem; font-weight: 700; color: #2DD4A8;
-  background: rgba(45, 212, 168, 0.1);
+  font-size: 0.55rem; font-weight: 700; color: var(--color-primary);
+  background: var(--color-primary-soft);
   padding: 2px 6px; border-radius: 6px; white-space: nowrap;
 }
 
@@ -248,40 +248,40 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 .tr-lang-btn {
   flex: 1;
   padding: 6px 4px;
-  border-radius: 8px;
-  border: 1.5px solid rgba(0, 0, 0, 0.06);
-  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-soft);
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
   font-size: 0.68rem;
   font-weight: 600;
-  color: #666;
+  color: var(--color-ink-2);
   white-space: nowrap;
 }
 .tr-lang-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  border-color: rgba(0, 0, 0, 0.12);
+  background: var(--color-surface);
+  border-color: var(--color-ink-3);
 }
 .tr-lang-btn.active {
-  background: rgba(45, 212, 168, 0.1);
-  border-color: #2DD4A8;
-  color: #333;
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-ink);
 }
 
 /* Input area — fixed height */
 .tr-input-area {
-  background: rgba(0, 0, 0, 0.02);
-  border-radius: 10px;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
-  border: 1.5px solid rgba(0, 0, 0, 0.05);
+  border: 1.5px solid var(--color-border);
   transition: border-color 0.2s, box-shadow 0.2s;
   flex-shrink: 0;
 }
 .tr-input-area:focus-within {
-  border-color: #2DD4A8;
-  box-shadow: 0 0 0 3px rgba(45, 212, 168, 0.08);
-  background: rgba(255, 255, 255, 0.8);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 8%, transparent);
+  background: var(--color-surface);
 }
 .tr-field-header {
   display: flex;
@@ -293,11 +293,11 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 .tr-field-lang {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #999;
+  color: var(--color-ink-3);
 }
 .tr-char-count {
   font-size: 0.6rem;
-  color: #ccc;
+  color: var(--color-ink-3);
 }
 .tr-textarea {
   width: 100%;
@@ -308,12 +308,12 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   resize: none;
   font-size: 0.88rem;
   font-weight: 500;
-  color: #333;
-  font-family: -apple-system, 'PingFang SC', sans-serif;
+  color: var(--color-ink);
+  font-family: var(--font-family);
   line-height: 1.45;
   padding: 0;
 }
-.tr-textarea::placeholder { color: #ccc; font-weight: 400; }
+.tr-textarea::placeholder { color: var(--color-ink-3); font-weight: 400; }
 
 /* Actions */
 .tr-actions {
@@ -324,22 +324,22 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 }
 .tr-swap-btn {
   width: 32px; height: 32px;
-  border-radius: 8px;
-  border: 1.5px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface-soft);
   cursor: pointer;
-  color: #888;
+  color: var(--color-ink-2);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.tr-swap-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); color: #555; }
+.tr-swap-btn:hover:not(:disabled) { background: var(--color-surface); color: var(--color-ink); }
 .tr-swap-btn:disabled { opacity: 0.3; cursor: default; }
 
 .tr-btn {
   padding: 7px 22px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
-  background: #2DD4A8;
+  background: var(--color-primary);
   color: #fff;
   cursor: pointer;
   font-size: 0.82rem;
@@ -350,7 +350,7 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.tr-btn:hover:not(:disabled) { background: #26C498; }
+.tr-btn:hover:not(:disabled) { background: var(--color-primary-hover); }
 .tr-btn:active:not(:disabled) { transform: scale(0.97); }
 .tr-btn:disabled { opacity: 0.4; cursor: default; }
 
@@ -365,35 +365,35 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 
 /* Output — always visible, fixed height */
 .tr-output-area {
-  background: rgba(45, 212, 168, 0.04);
-  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 4%, transparent);
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
-  border: 1.5px solid rgba(45, 212, 168, 0.12);
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
   flex-shrink: 0;
   height: 60px;
   overflow-y: auto;
 }
 .tr-output-area.empty {
-  background: rgba(0, 0, 0, 0.015);
-  border-color: rgba(0, 0, 0, 0.04);
+  background: transparent;
+  border-color: var(--color-border);
 }
 .tr-output-area.error {
-  background: rgba(231, 76, 60, 0.04);
-  border-color: rgba(231, 76, 60, 0.15);
+  background: color-mix(in srgb, var(--color-danger) 4%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 15%, transparent);
 }
 .tr-output-area.error .tr-output-text {
-  color: #e74c3c;
+  color: var(--color-danger);
 }
 .tr-output-text {
   font-size: 0.88rem;
-  color: #333;
+  color: var(--color-ink);
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .tr-output-placeholder {
   font-size: 0.82rem;
-  color: #d0d0d0;
+  color: var(--color-ink-3);
   line-height: 1.45;
   font-style: italic;
 }
@@ -403,15 +403,17 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   background: rgba(0, 0, 0, 0.05);
   border-radius: 5px;
   cursor: pointer;
-  color: #999;
+  color: var(--color-ink-3);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
 }
-.tr-copy-btn:hover { background: rgba(0, 0, 0, 0.1); color: #555; }
+.tr-copy-btn:hover { background: rgba(0, 0, 0, 0.1); color: var(--color-ink); }
+html.dark .tr-copy-btn { background: rgba(255, 255, 255, 0.08); }
+html.dark .tr-copy-btn:hover { background: rgba(255, 255, 255, 0.14); }
 
 /* History — always visible, fixed height, internal scroll */
 .tr-history {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--color-border);
   padding-top: 6px;
   flex-shrink: 0;
 }
@@ -421,26 +423,23 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   align-items: center;
   padding: 0 2px 4px;
   font-size: 0.7rem;
-  color: #999;
+  color: var(--color-ink-3);
   font-weight: 600;
   height: 18px;
 }
 .tr-history-clear {
   border: none; background: none; cursor: pointer;
-  font-size: 0.65rem; color: #ccc; font-family: inherit;
+  font-size: 0.65rem; color: var(--color-ink-3); font-family: inherit;
   transition: color 0.2s; padding: 0;
 }
-.tr-history-clear:hover { color: #e74c3c; }
+.tr-history-clear:hover { color: var(--color-danger); }
 
 .tr-history-list {
   height: 100px; /* 5 items × 34px */
   overflow-y: auto;
   scroll-behavior: smooth;
+  /* 滚动条统一走全局 5px token */
 }
-.tr-history-list::-webkit-scrollbar { width: 4px; }
-.tr-history-list::-webkit-scrollbar-track { background: transparent; }
-.tr-history-list::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 2px; }
-.tr-history-list::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
 
 .tr-history-item {
   display: flex;
@@ -454,6 +453,7 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   box-sizing: border-box;
 }
 .tr-history-item:hover { background: rgba(0, 0, 0, 0.03); }
+html.dark .tr-history-item:hover { background: rgba(255, 255, 255, 0.05); }
 
 .tr-h-flags {
   font-size: 11px;
@@ -463,7 +463,7 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 .tr-h-source {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #444;
+  color: var(--color-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -472,14 +472,14 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 }
 .tr-h-arrow2 {
   font-size: 0.5rem;
-  color: #ccc;
+  color: var(--color-ink-3);
   flex-shrink: 0;
 }
 .tr-h-target {
   flex: 1;
   min-width: 0;
   font-size: 0.68rem;
-  color: #2DD4A8;
+  color: var(--color-primary);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -488,7 +488,7 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
 
 .tr-history-time {
   font-size: 0.55rem;
-  color: #bbb;
+  color: var(--color-ink-3);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -498,14 +498,15 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   border: none;
   background: rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  font-size: 8px; color: #aaa;
+  font-size: 8px; color: var(--color-ink-3);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s, background 0.15s;
 }
 .tr-history-item:hover .tr-history-del { opacity: 1; }
-.tr-history-del:hover { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+.tr-history-del:hover { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+html.dark .tr-history-del { background: rgba(255, 255, 255, 0.12); }
 
 .tr-history-empty {
   display: flex;
@@ -513,7 +514,7 @@ const toFlag = computed(() => direction.value === 'zh2en' ? '🇺🇸' : '🇨�
   justify-content: center;
   height: 100%;
   font-size: 0.75rem;
-  color: #d0d0d0;
+  color: var(--color-ink-3);
   user-select: none;
 }
 </style>

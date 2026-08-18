@@ -16,6 +16,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'pomodoro', name: '番茄钟', icon: '🍅', desc: '25+5倒计时', defaultPos: { x: 600, y: 380 } },
   { type: 'memo', name: '便签', icon: '📝', desc: '可拖拽文字便签', defaultPos: { x: 100, y: 100 } },
   { type: 'sticky', name: '便利贴', icon: '📌', desc: '可编辑便利贴', defaultPos: { x: 80, y: 12 } },
+  { type: 'todo', name: '待办', icon: '✅', desc: '清单 · 待办/进行中/完成', defaultPos: { x: 340, y: 140 } },
   { type: 'calculator', name: '计算器', icon: '🔢', desc: '实时计算 + 历史记录', defaultPos: { x: 500, y: 100 } },
   { type: 'searchengine', name: '搜索引擎', icon: '🔎', desc: '多引擎搜索', defaultPos: { x: 420, y: 280 } },
   { type: 'translate', name: '翻译', icon: '🌐', desc: '中英互译', defaultPos: { x: 520, y: 200 } },

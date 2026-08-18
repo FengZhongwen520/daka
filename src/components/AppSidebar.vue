@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper } from '../store'
+import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper, themeMode, toggleTheme } from '../store'
 import { getProjects, deleteProject, updateProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
 import { db } from '../db'
@@ -244,6 +244,13 @@ watch(showModal, async (visible) => {
         </div>
       </div>
 
+      <!-- Theme -->
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item" @click="toggleTheme" :title="themeMode === 'dark' ? '切换到浅色' : '切换到深色'">
+          <span class="menu-icon">{{ themeMode === 'dark' ? '☀️' : '🌙' }}</span>
+          <span class="menu-label">{{ themeMode === 'dark' ? '浅色' : '深色' }}</span>
+        </div>
+      </div>
 
     </div>
 
@@ -256,7 +263,7 @@ watch(showModal, async (visible) => {
 
 <style scoped>
 .app-sidebar {
-  width: 220px; background: #ecf0ee;
+  width: var(--sidebar-width); background: var(--color-surface-soft);
   border-right: 1px solid var(--color-border);
   display: flex; flex-direction: column; flex-shrink: 0; overflow: visible;
   transition: width 0.25s ease; position: relative;
@@ -273,17 +280,17 @@ watch(showModal, async (visible) => {
 .sidebar-collapse-btn {
   position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
   width: 32px; height: 72px; border-radius: 0 12px 12px 0;
-  border: 2px solid #2DD4A8; border-left: none;
-  background: #2DD4A8; cursor: pointer;
+  border: 2px solid var(--color-primary); border-left: none;
+  background: var(--color-primary); cursor: pointer;
   font-size: 14px; color: #fff; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s; z-index: 10;
   box-shadow: 2px 0 14px rgba(45,212,168,0.35);
 }
 .app-sidebar:not(.collapsed) .sidebar-collapse-btn {
-  background: #ecf0ee;
-  color: #2DD4A8;
-  border-color: #2DD4A8;
+  background: var(--color-surface-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 .sidebar-collapse-btn:hover {
   transform: translateY(-50%) scale(1.08);
@@ -294,7 +301,7 @@ watch(showModal, async (visible) => {
 .sidebar-current-project {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 12px; margin-bottom: 6px;
-  border-radius: 10px; background: rgba(45,212,168,0.08);
+  border-radius: var(--radius-sm); background: var(--color-primary-soft);
 }
 .project-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; min-width: 10px; }
 
@@ -317,61 +324,69 @@ watch(showModal, async (visible) => {
   transition: all 0.2s;
 }
 .sidebar-menu-item:hover { background: rgba(0,0,0,0.04); }
-.sidebar-menu-item.active { background: rgba(45,212,168,0.1); }
+.sidebar-menu-item.active { background: var(--color-primary-soft); }
 .menu-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
-.menu-label { font-size: 0.8rem; font-weight: 600; color: rgba(0,0,0,0.5); }
-.sidebar-menu-item.danger .menu-label { color: rgba(231,76,60,0.5); }
+.menu-label { font-size: 0.8rem; font-weight: 600; color: var(--color-ink-2); }
+.sidebar-menu-item.danger .menu-label { color: var(--color-danger); }
 
 /* Bubble pops to the RIGHT */
 .sidebar-bubble {
   position: absolute; left: calc(100% + 8px); top: 0;
   width: 220px; padding: 12px;
-  background: #fff; border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  background: var(--color-surface); border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-pop);
   z-index: 100; display: flex; flex-direction: column; gap: 6px;
 }
 .bubble-row { display: flex; gap: 4px; align-items: center; justify-content: space-between; }
-.bubble-label { font-size: 0.72rem; color: #555; }
+.bubble-label { font-size: 0.72rem; color: var(--color-ink-2); }
 .sidebar-text-btn {
   flex: 1; padding: 6px 0; border: none; border-radius: 6px;
   background: rgba(0,0,0,0.04); cursor: pointer; font-size: 0.7rem;
-  color: rgba(0,0,0,0.45); transition: all 0.2s; font-family: inherit;
+  color: var(--color-ink-2); transition: all 0.2s; font-family: inherit;
   text-align: center;
 }
-.sidebar-text-btn:hover { background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.7); }
+.sidebar-text-btn:hover { background: rgba(0,0,0,0.08); color: var(--color-ink); }
 
 .bubble-project-list { max-height: 120px; overflow-y: auto; }
 .bubble-project-item {
-  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
-  border-radius: 6px; cursor: pointer; font-size: 0.75rem; color: #444;
+  display: flex; align-items: center; gap: 4px; padding: 6px 8px;
+  border-radius: 6px; cursor: pointer; font-size: 0.75rem; color: var(--color-ink-2);
   transition: background 0.15s;
 }
 .bubble-project-item:hover { background: rgba(0,0,0,0.04); }
-.bubble-project-item { gap: 4px; }
 .bubble-project-item span.project-color-dot { flex: none; }
 .bubble-project-item span { flex: 1; cursor: pointer; }
-.bubble-project-item.active { background: rgba(45,212,168,0.1); color: #2DD4A8; }
+.bubble-project-item.active { background: var(--color-primary-soft); color: var(--color-primary); }
 .bubble-project-edit, .bubble-project-del {
   width: 18px; height: 18px; border-radius: 50%; border: none;
   cursor: pointer; font-size: 9px; display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.15s; flex-shrink: 0;
 }
-.bubble-project-edit { background: rgba(0,0,0,0.06); color: #888; }
-.bubble-project-del { background: rgba(0,0,0,0.06); color: #888; }
+.bubble-project-edit { background: rgba(0,0,0,0.06); color: var(--color-ink-3); }
+.bubble-project-del { background: rgba(0,0,0,0.06); color: var(--color-ink-3); }
 .bubble-project-item:hover .bubble-project-edit,
 .bubble-project-item:hover .bubble-project-del { opacity: 1; }
-.bubble-project-edit:hover { background: #2DD4A8; color: #fff; }
-.bubble-project-del:hover { background: #e74c3c; color: #fff; }
-.bubble-empty { font-size: 0.7rem; color: #ccc; text-align: center; padding: 8px; }
+.bubble-project-edit:hover { background: var(--color-primary); color: #fff; }
+.bubble-project-del:hover { background: var(--color-danger); color: #fff; }
+.bubble-empty { font-size: 0.7rem; color: var(--color-ink-3); text-align: center; padding: 8px; }
 
-.bubble-title { font-size: 0.8rem; font-weight: 700; color: #444; margin-bottom: 2px; }
-.bubble-desc { font-size: 0.7rem; color: #999; margin-bottom: 4px; }
-.bubble-ver { font-size: 0.65rem; color: #aaa; line-height: 1.5; }
-.bubble-warn { font-size: 0.72rem; color: #e74c3c; text-align: center; }
+.bubble-title { font-size: 0.8rem; font-weight: 700; color: var(--color-ink); margin-bottom: 2px; }
+.bubble-desc { font-size: 0.7rem; color: var(--color-ink-3); margin-bottom: 4px; }
+.bubble-ver { font-size: 0.65rem; color: var(--color-ink-3); line-height: 1.5; }
+.bubble-warn { font-size: 0.72rem; color: var(--color-danger); text-align: center; }
 
-.help-content { font-size: 0.85rem; color: #555; line-height: 1.6; }
+.help-content { font-size: 0.85rem; color: var(--color-ink-2); line-height: 1.6; }
 .help-content h3 { font-size: 1.2rem; margin-bottom: 4px; }
 .help-content h4 { margin: 10px 0 4px; font-size: 0.9rem; }
 .help-content ul { padding-left: 18px; }
 .help-content li { margin-bottom: 2px; }
+
+/* === Dark mode overrides === */
+html.dark .sidebar-menu-item:hover { background: rgba(255,255,255,0.06); }
+html.dark .sidebar-text-btn { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); }
+html.dark .sidebar-text-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
+html.dark .bubble-project-item:hover { background: rgba(255,255,255,0.06); }
+html.dark .bubble-project-edit,
+html.dark .bubble-project-del { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
 </style>

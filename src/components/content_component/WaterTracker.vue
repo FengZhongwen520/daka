@@ -95,9 +95,9 @@ const waveHeight = computed(() => progress.value * 80)
       <svg class="cup-svg" viewBox="0 0 120 140">
         <!-- Cup outline -->
         <path
+          class="cup-outline"
           d="M25 30 L30 120 Q30 130 40 130 L80 130 Q90 130 90 120 L95 30 Z"
           fill="none"
-          stroke="rgba(0,0,0,0.2)"
           stroke-width="2.5"
           stroke-linejoin="round"
         />
@@ -125,8 +125,8 @@ const waveHeight = computed(() => progress.value * 80)
         <!-- Gradient -->
         <defs>
           <linearGradient id="water-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" :stop-color="status === 'idle' ? '#ffd93d' : status === 'healthy' ? '#2DD4A8' : '#5dade2'" />
-            <stop offset="100%" :stop-color="status === 'idle' ? '#f0c929' : status === 'healthy' ? '#26C498' : '#3498db'" />
+            <stop offset="0%" class="stop-top" />
+            <stop offset="100%" class="stop-bottom" />
           </linearGradient>
         </defs>
       </svg>
@@ -152,20 +152,32 @@ const waveHeight = computed(() => progress.value * 80)
 .water-tracker {
   position: absolute;
   width: 180px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 2px 2px 0 #ddd, 6px 8px 20px rgba(0,0,0,0.2);
+  background: var(--color-paper);
+  border-radius: var(--radius-md);
+  box-shadow: 2px 2px 0 var(--color-line), 6px 8px 20px rgba(0,0,0,0.2);
   z-index: 57;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: box-shadow 0.2s, background 0.5s;
 }
-.water-tracker.idle { background: #fffef5; }
-.water-tracker.idle :deep(.drag-bar--header) { background: rgba(240, 200, 0, 0.15); }
+.water-tracker.idle { background: color-mix(in srgb, var(--status-idle) 7%, var(--color-paper)); }
+.water-tracker.idle :deep(.drag-bar--header) { background: var(--status-idle-soft); }
 .water-tracker:hover {
-  box-shadow: 2px 2px 0 #ddd, 8px 12px 24px rgba(0,0,0,0.25);
+  box-shadow: 2px 2px 0 var(--color-line), 8px 12px 24px rgba(0,0,0,0.25);
 }
+
+/* Cup outline — dark-aware stroke */
+.cup-outline { stroke: rgba(0, 0, 0, 0.2); }
+html.dark .cup-outline { stroke: rgba(255, 255, 255, 0.35); }
+
+/* Water gradient — 3 status palettes via tokens */
+.stop-top { stop-color: var(--status-drink); }
+.stop-bottom { stop-color: var(--status-drink-dark); }
+.water-tracker.idle .stop-top { stop-color: var(--status-idle); }
+.water-tracker.idle .stop-bottom { stop-color: var(--status-idle-dark); }
+.water-tracker.healthy .stop-top { stop-color: var(--color-primary); }
+.water-tracker.healthy .stop-bottom { stop-color: var(--color-primary-hover); }
 
 /* Body */
 .water-body {
@@ -184,7 +196,7 @@ const waveHeight = computed(() => progress.value * 80)
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: #5dade2;
+  background: var(--status-drink);
   color: #fff;
   font-size: 22px;
   cursor: pointer;
@@ -192,16 +204,16 @@ const waveHeight = computed(() => progress.value * 80)
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  box-shadow: 0 3px 8px rgba(93,173,226,0.4);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--status-drink) 40%, transparent);
 }
-.drink-btn:hover { transform: scale(1.1); background: #3498db; }
+.drink-btn:hover { transform: scale(1.1); background: var(--status-drink-dark); }
 .drink-btn:active { transform: scale(0.95); }
-.water-tracker.idle .drink-btn { background: #f0c929; box-shadow: 0 3px 8px rgba(240,200,0,0.4); animation: pulse-btn 1.5s infinite; }
-.water-tracker.healthy .drink-btn { background: #2DD4A8; box-shadow: 0 3px 8px rgba(45,212,168,0.4); }
+.water-tracker.idle .drink-btn { background: var(--status-idle); box-shadow: 0 3px 8px color-mix(in srgb, var(--status-idle) 40%, transparent); animation: pulse-btn 1.5s infinite; }
+.water-tracker.healthy .drink-btn { background: var(--color-primary); box-shadow: 0 3px 8px color-mix(in srgb, var(--color-primary) 40%, transparent); }
 
 @keyframes pulse-btn {
-  0%, 100% { box-shadow: 0 3px 8px rgba(240,200,0,0.4); }
-  50% { box-shadow: 0 3px 20px rgba(240,200,0,0.7); }
+  0%, 100% { box-shadow: 0 3px 8px color-mix(in srgb, var(--status-idle) 40%, transparent); }
+  50% { box-shadow: 0 3px 20px color-mix(in srgb, var(--status-idle) 70%, transparent); }
 }
 
 /* Stats */
@@ -212,7 +224,7 @@ const waveHeight = computed(() => progress.value * 80)
 .water-amount {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #666;
+  color: var(--color-ink-2);
   margin-bottom: 4px;
 }
 .water-cups {
@@ -231,7 +243,7 @@ const waveHeight = computed(() => progress.value * 80)
 .water-idle-warn {
   margin-top: 6px;
   font-size: 0.7rem;
-  color: #e67e22;
+  color: var(--status-idle);
   font-weight: 600;
   animation: blink 1s infinite;
 }

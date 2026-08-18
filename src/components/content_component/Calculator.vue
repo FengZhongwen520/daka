@@ -191,15 +191,15 @@ function onButtonClick(btn: string) {
 .calc-input { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
 .calc-input-field {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent;
-  font-size: 1.5rem; font-weight: 600; color: #2d3436;
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-  padding: 4px 0; caret-color: #2DD4A8;
+  font-size: 1.5rem; font-weight: 600; color: var(--color-ink);
+  font-family: var(--font-mono);
+  padding: 4px 0; caret-color: var(--color-primary);
 }
-.calc-input-field::placeholder { color: #ccc; font-size: 0.8rem; }
+.calc-input-field::placeholder { color: var(--color-ink-3); font-size: 0.8rem; }
 .calc-result {
   font-size: 1.5rem; font-weight: 700;
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
-  color: #2DD4A8; white-space: nowrap;
+  font-family: var(--font-mono);
+  color: var(--color-primary); white-space: nowrap;
 }
 
 /* Buttons */
@@ -208,30 +208,30 @@ function onButtonClick(btn: string) {
   gap: 6px; padding: 0 14px 14px;
 }
 .calc-btn {
-  aspect-ratio: 1.4; border: none; border-radius: 10px;
+  aspect-ratio: 1.4; border: none; border-radius: var(--radius-sm);
   background: rgba(0,0,0,0.04); cursor: pointer;
-  font-size: 0.95rem; font-weight: 600; color: #444;
+  font-size: 0.95rem; font-weight: 600; color: var(--color-ink);
   transition: all 0.15s; display: flex; align-items: center; justify-content: center;
   font-family: -apple-system, 'PingFang SC', sans-serif;
 }
 .calc-btn:hover { background: rgba(0,0,0,0.08); }
 .calc-btn:active { transform: scale(0.95); background: rgba(0,0,0,0.12); }
-.calc-btn-op { color: #2DD4A8; font-size: 1.1rem; }
-.calc-btn-eq { background: #2DD4A8; color: #fff; font-size: 1.2rem; }
-.calc-btn-eq:hover { background: #26C498; }
-.calc-btn-action { color: #e74c3c; font-weight: 700; }
+.calc-btn-op { color: var(--color-primary); font-size: 1.1rem; }
+.calc-btn-eq { background: var(--color-primary); color: #fff; font-size: 1.2rem; }
+.calc-btn-eq:hover { background: var(--color-primary-hover); }
+.calc-btn-action { color: var(--color-danger); font-weight: 700; }
 
 /* History */
-.calc-history { border-top: 1px solid rgba(0,0,0,0.06); }
+.calc-history { border-top: 1px solid var(--color-border); }
 .calc-history-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 14px 4px; font-size: 0.7rem; color: #999; font-weight: 600;
+  padding: 8px 14px 4px; font-size: 0.7rem; color: var(--color-ink-3); font-weight: 600;
 }
 .calc-history-clear {
   border: none; background: none; cursor: pointer;
-  font-size: 0.65rem; color: #ccc; font-family: inherit; transition: color 0.2s;
+  font-size: 0.65rem; color: var(--color-ink-3); font-family: inherit; transition: color 0.2s;
 }
-.calc-history-clear:hover { color: #e74c3c; }
+.calc-history-clear:hover { color: var(--color-danger); }
 .calc-history-list { max-height: 102px; overflow-y: auto; padding: 0 14px 8px; }
 .calc-history-item {
   display: flex; align-items: center; gap: 6px;
@@ -240,13 +240,23 @@ function onButtonClick(btn: string) {
   font-family: 'SF Mono', 'Consolas', monospace;
 }
 .calc-history-item:hover { background: rgba(0,0,0,0.03); }
-.calc-history-expr { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.calc-history-res { color: #2DD4A8; font-weight: 600; flex-shrink: 0; }
+.calc-history-expr { color: var(--color-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calc-history-res { color: var(--color-primary); font-weight: 600; flex-shrink: 0; }
 .calc-history-del {
   margin-left: auto; width: 16px; height: 16px; border-radius: 50%;
   border: none; background: rgba(0,0,0,0.08); cursor: pointer;
-  font-size: 8px; color: #aaa; display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: var(--color-ink-3); display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.15s; flex-shrink: 0;
 }
 .calc-history-item:hover .calc-history-del { opacity: 1; }
+
+/* === Dark mode === */
+html.dark .calc-kb-toggle { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
+html.dark .calc-kb-toggle:hover { background: rgba(255,255,255,0.16); }
+html.dark .calc-btn { background: rgba(255,255,255,0.08); }
+html.dark .calc-btn:hover { background: rgba(255,255,255,0.13); }
+html.dark .calc-btn:active { background: rgba(255,255,255,0.18); }
+html.dark .calc-history { border-top-color: rgba(255,255,255,0.08); }
+html.dark .calc-history-item:hover { background: rgba(255,255,255,0.05); }
+html.dark .calc-history-del { background: rgba(255,255,255,0.12); }
 </style>

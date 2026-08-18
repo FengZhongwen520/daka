@@ -103,10 +103,10 @@ function closeWelcome() { showWelcome.value = false }
   </el-dialog>
 </template>
 
-<style>
+<style scoped>
 .welcome-body { min-height: 280px; }
-.welcome-intro { font-size: 0.95rem; margin-bottom: 12px; line-height: 1.6; }
-.welcome-page h4 { margin: 10px 0 4px; font-size: 0.9rem; color: #444; }
-.welcome-page p { font-size: 0.8rem; color: #666; line-height: 1.5; margin-bottom: 6px; }
+.welcome-intro { font-size: 0.95rem; margin-bottom: 12px; line-height: 1.6; color: var(--color-ink-2); }
+.welcome-page h4 { margin: 10px 0 4px; font-size: 0.9rem; color: var(--color-ink); }
+.welcome-page p { font-size: 0.8rem; color: var(--color-ink-2); line-height: 1.5; margin-bottom: 6px; }
 .welcome-footer { display: flex; justify-content: space-between; }
 </style>

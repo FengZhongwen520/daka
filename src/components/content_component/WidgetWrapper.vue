@@ -34,8 +34,8 @@ provide('widgetType', props.type)
   display: flex; align-items: center; gap: 6px;
   width: 100%; padding: 8px 12px; border: none;
   background: transparent; border-radius: 7px;
-  cursor: pointer; font-size: 0.8rem; color: #e74c3c;
+  cursor: pointer; font-size: 0.8rem; color: var(--color-danger);
   transition: background 0.15s; font-family: inherit;
 }
-.widget-menu-item:hover { background: rgba(231,76,60,0.08); }
+.widget-menu-item:hover { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
 </style>

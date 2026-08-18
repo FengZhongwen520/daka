@@ -93,23 +93,27 @@ function onTitleKeydown(e: KeyboardEvent) {
 /* ======= Header variant ======= */
 .drag-bar--header {
   height: 26px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.04);
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 10px;
   cursor: grab;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 .drag-bar--header:active {
   cursor: grabbing;
+}
+html.dark .drag-bar--header {
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .drag-bar__title {
   font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--color-ink-2);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -119,19 +123,19 @@ function onTitleKeydown(e: KeyboardEvent) {
   cursor: pointer;
 }
 .drag-bar__title--editable:hover {
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--color-ink);
 }
 
 .drag-bar__title-input {
   width: 120px;
   font-size: 0.78rem;
   font-weight: 700;
-  border: 1.5px solid #2DD4A8;
+  border: 1.5px solid var(--color-primary);
   border-radius: 4px;
   padding: 1px 4px;
   outline: none;
   font-family: inherit;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--color-surface);
 }
 
 .drag-bar__actions {
@@ -155,16 +159,22 @@ function onTitleKeydown(e: KeyboardEvent) {
   cursor: grab;
   opacity: 0;
   transition: opacity 0.2s;
-  z-index: 10;
-  border-radius: 3px 3px 0 0;
+  z-index: 60;
+  border-radius: 6px 6px 0 0;
 }
 .drag-bar--overlay:active {
   cursor: grabbing;
   background: rgba(0, 0, 0, 0.14);
 }
+html.dark .drag-bar--overlay {
+  background: rgba(255, 255, 255, 0.08);
+}
+html.dark .drag-bar--overlay:active {
+  background: rgba(255, 255, 255, 0.14);
+}
 
 .drag-bar__dots {
-  color: rgba(0, 0, 0, 0.35);
+  color: var(--color-ink-3);
   font-size: 16px;
   letter-spacing: 4px;
   user-select: none;
