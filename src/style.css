@@ -52,7 +52,7 @@
   --shadow-pop: 0 4px 20px rgba(0, 0, 0, 0.15);
 
   /* Focus */
-  --focus-ring: 0 0 0 3px rgba(45, 212, 168, 0.35);
+  --focus-ring: 0 0 0 1px rgba(45, 212, 168, 0.28), 0 0 0 3px rgba(45, 212, 168, 0.1);
 
   /* Layout */
   --sidebar-width: 220px;
@@ -67,16 +67,6 @@
   --color-text-secondary: var(--color-ink-2);
   --color-text-muted: var(--color-ink-3);
 
-  /* Element Plus 主题覆盖 */
-  --el-color-primary: #2DD4A8;
-  --el-color-primary-light-3: #6BE0C2;
-  --el-color-primary-light-5: #A0ECD8;
-  --el-color-primary-light-7: #C5F4E7;
-  --el-color-primary-light-8: #D7F8EF;
-  --el-color-primary-light-9: #EBFBF6;
-  --el-font-family: var(--font-family);
-  --el-border-radius-base: 10px;
-  --el-border-radius-round: 16px;
 }
 
 /* === Dark theme === */
@@ -98,17 +88,6 @@ html.dark {
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.45);
   --shadow-card-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
   --shadow-paper: 2px 3px 0 rgba(0, 0, 0, 0.5), 8px 12px 24px rgba(0, 0, 0, 0.5);
-
-  /* Element Plus 深色变量（其余由 dark/css-vars.css 提供） */
-  --el-bg-color: #1E2228;
-  --el-bg-color-overlay: #262B34;
-  --el-fill-color-blank: #1E2228;
-  --el-text-color-primary: #E6E9EE;
-  --el-text-color-regular: #C9CFD8;
-  --el-border-color: #2A2F38;
-  --el-border-color-light: #2A2F38;
-  --el-border-color-lighter: #2A2F38;
-  --el-mask-color: rgba(0, 0, 0, 0.55);
 }
 
 /* === Reset === */
@@ -272,6 +251,101 @@ select:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* Shared focused field surface: one outer ring, never a second input ring. */
+.field-shell {
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field-shell:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  box-shadow: var(--focus-ring);
+}
+
+.field-shell :where(input, textarea, select):focus,
+.field-shell :where(input, textarea, select):focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Lightweight application controls */
+.ui-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  cursor: pointer;
+  font: 600 0.72rem/1 var(--font-family);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+.ui-button:hover {
+  border-color: color-mix(in srgb, var(--color-ink-3) 45%, var(--color-border));
+  color: var(--color-ink);
+}
+.ui-button:disabled { cursor: default; opacity: 0.45; }
+.ui-button-primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #12382f;
+}
+.ui-button-primary:hover {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+  color: #0d3028;
+}
+.ui-button-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 58%, var(--color-border));
+  background: var(--color-danger);
+  color: #fff;
+}
+.ui-button-small { min-height: 30px; padding-inline: 9px; font-size: 0.67rem; }
+
+.ui-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: 500 0.78rem/1.4 var(--font-family);
+}
+.ui-input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  box-shadow: var(--focus-ring);
+}
+
+.ui-switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink-3) 34%, transparent);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.ui-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.22);
+  transition: transform 160ms ease;
+}
+.ui-switch[aria-checked="true"] { background: var(--color-primary); }
+.ui-switch[aria-checked="true"]::after { transform: translateX(14px); }
 
 /* === Widget Card (glassmorphism) === */
 .widget-card {

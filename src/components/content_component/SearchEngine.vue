@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onUnmounted, ref } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import { useHistoryList } from '../../composables/useHistoryList'
 import { formatTime } from '../../utils/time'
 import DragBar from '../common/DragBar.vue'
+import FaviconImg from '../FaviconImg.vue'
 
 interface SearchRecord {
   query: string
@@ -14,18 +15,18 @@ interface SearchRecord {
 interface Engine {
   id: string
   name: string
-  icon: string
+  home: string
   color: string
   url: string
 }
 
 const engines: Engine[] = [
-  { id: 'baidu', name: '百度', icon: '🔵', color: '#2932E1', url: 'https://www.baidu.com/s?wd=' },
-  { id: 'bing', name: '必应', icon: '🔍', color: '#00809D', url: 'https://www.bing.com/search?q=' },
-  { id: 'google', name: '谷歌', icon: '🌐', color: '#4285F4', url: 'https://www.google.com/search?q=' },
-  { id: 'zhihu', name: '知乎', icon: '💡', color: '#0066FF', url: 'https://www.zhihu.com/search?type=content&q=' },
-  { id: 'csdn', name: 'CSDN', icon: '📘', color: '#FC5531', url: 'https://so.csdn.net/so/search?q=' },
-  { id: 'bilibili', name: 'B站', icon: '📺', color: '#FB7299', url: 'https://search.bilibili.com/all?keyword=' },
+  { id: 'baidu', name: '百度', home: 'https://www.baidu.com', color: '#2932E1', url: 'https://www.baidu.com/s?wd=' },
+  { id: 'bing', name: '必应', home: 'https://www.bing.com', color: '#00809D', url: 'https://www.bing.com/search?q=' },
+  { id: 'google', name: '谷歌', home: 'https://www.google.com', color: '#4285F4', url: 'https://www.google.com/search?q=' },
+  { id: 'zhihu', name: '知乎', home: 'https://www.zhihu.com', color: '#0066FF', url: 'https://www.zhihu.com/search?type=content&q=' },
+  { id: 'csdn', name: 'CSDN', home: 'https://www.csdn.net', color: '#FC5531', url: 'https://so.csdn.net/so/search?q=' },
+  { id: 'bilibili', name: 'B站', home: 'https://www.bilibili.com', color: '#FB7299', url: 'https://search.bilibili.com/all?keyword=' },
 ]
 
 const engineMap = Object.fromEntries(engines.map(e => [e.id, e]))
@@ -46,6 +47,24 @@ const { history, addRecord, deleteRecord, clearHistory } = useHistoryList<Search
 )
 
 const query = ref('')
+const showHistory = ref(false)
+let historyCloseTimer: ReturnType<typeof setTimeout> | null = null
+
+function openHistory() {
+  if (historyCloseTimer) clearTimeout(historyCloseTimer)
+  showHistory.value = true
+}
+
+function scheduleHistoryClose() {
+  if (historyCloseTimer) clearTimeout(historyCloseTimer)
+  historyCloseTimer = setTimeout(() => {
+    showHistory.value = false
+  }, 120)
+}
+
+function keepHistoryOpen() {
+  if (historyCloseTimer) clearTimeout(historyCloseTimer)
+}
 
 function setDefaultEngine(id: string) {
   defaultEngine.value = id
@@ -78,108 +97,188 @@ function onKeydown(e: KeyboardEvent) {
 function searchWithRecord(record: SearchRecord) {
   const eng = engineMap[record.engine]
   window.open(eng.url + encodeURIComponent(record.query), '_blank')
+  showHistory.value = false
 }
 
-// Scrollable history — show ~4 items
-
-// Title
-const savedTitle = JSON.parse(localStorage.getItem(`${sk}-title`) || 'null')
-const title = ref(savedTitle ?? '🔎 搜索引擎')
-watch(title, (v) => localStorage.setItem(`${sk}-title`, JSON.stringify(v)))
+function engineInitial(engine: Engine) {
+  return engine.name.charAt(0).toUpperCase()
+}
 
 // Drag
 const posKey = `searchengine-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
 
+onUnmounted(() => {
+  if (historyCloseTimer) clearTimeout(historyCloseTimer)
+})
+
 </script>
 
 <template>
   <div class="searchengine widget-card" :style="{ left: x + 'px', top: y + 'px' }">
-    <!-- Drag bar -->
-    <DragBar variant="header" :on-drag-start="onDragStart" v-model:title="title" :editable="true" title-placeholder="🔎 搜索引擎" />
+    <DragBar variant="overlay" :on-drag-start="onDragStart" />
 
     <!-- Body -->
     <div class="se-body">
+      <!-- Search input -->
+      <div class="se-input-row field-shell">
+        <span class="se-active-engine">
+          <FaviconImg
+            :url="engineMap[currentEngine].home"
+            :fallback-text="engineInitial(engineMap[currentEngine])"
+            :fallback-color="engineMap[currentEngine].color"
+            :size="20"
+          />
+        </span>
+        <input
+          v-model="query"
+          class="se-input"
+          aria-label="搜索内容"
+          :placeholder="'在 ' + engineMap[currentEngine].name + ' 上搜索...'"
+          @focus="openHistory"
+          @blur="scheduleHistoryClose"
+          @keydown="onKeydown"
+        />
+        <button
+          class="se-search-btn"
+          aria-label="搜索"
+          @click="search"
+          :disabled="!query.trim()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7.5" />
+            <path d="m16.5 16.5 4 4" />
+          </svg>
+        </button>
+      </div>
+
       <!-- Engine selector -->
-      <div class="se-engines">
+      <div class="se-engines" aria-label="搜索引擎">
         <button
           v-for="eng in engines"
           :key="eng.id"
           class="se-engine-btn"
-          :class="{
-            active: currentEngine === eng.id,
-            default: defaultEngine === eng.id && currentEngine !== eng.id,
-          }"
+          :class="{ active: currentEngine === eng.id }"
           :title="eng.name + (defaultEngine === eng.id ? ' (默认)' : '')"
           @click="selectEngine(eng.id)"
           @dblclick.prevent="setDefaultEngine(eng.id)"
         >
-          <span class="se-engine-icon">{{ eng.icon }}</span>
+          <span class="se-engine-icon">
+            <FaviconImg
+              :url="eng.home"
+              :fallback-text="engineInitial(eng)"
+              :fallback-color="eng.color"
+              :size="18"
+            />
+          </span>
           <span class="se-engine-name">{{ eng.name }}</span>
-          <span v-if="defaultEngine === eng.id" class="se-default-badge">默认</span>
+          <span
+            v-if="defaultEngine === eng.id"
+            class="se-default-dot"
+            title="默认引擎"
+            aria-label="默认引擎"
+          />
         </button>
       </div>
 
-      <!-- Search input -->
-      <div class="se-input-row">
-        <span class="se-active-engine">{{ engineMap[currentEngine].icon }}</span>
-        <input
-          ref="inputRef"
-          v-model="query"
-          class="se-input"
-          :placeholder="'在 ' + engineMap[currentEngine].name + ' 上搜索...'"
-          @keydown="onKeydown"
-        />
-        <button class="se-search-btn" @click="search" :disabled="!query.trim()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </div>
-
-      <!-- History — always visible, fixed height -->
-      <div class="se-history">
-        <div class="se-history-header">
-          <span>🕐 搜索记录</span>
-          <button v-if="history.length > 0" class="se-history-clear" @click="clearHistory" title="清空记录">清空</button>
-        </div>
-        <div ref="historyListRef" class="se-history-list">
-          <div
-            v-for="(h, i) in history"
-            :key="i"
-            class="se-history-item"
-            @click="searchWithRecord(h)"
-          >
-            <span class="se-history-engine" :style="{ color: engineMap[h.engine].color }">
-              {{ engineMap[h.engine].icon }}
-            </span>
-            <span class="se-history-query">{{ h.query }}</span>
-            <span class="se-history-time">{{ formatTime(h.time) }}</span>
-            <button class="se-history-del" @click.stop="deleteRecord(i)" title="删除">✕</button>
+      <!-- History — only while the input is focused -->
+      <Transition name="se-history">
+        <div
+          v-if="showHistory"
+          class="se-history"
+          @mousedown="keepHistoryOpen"
+        >
+          <div class="se-history-header">
+            <span>搜索记录</span>
+            <button
+              v-if="history.length > 0"
+              class="se-history-clear"
+              @mousedown.prevent="keepHistoryOpen"
+              @click="clearHistory"
+            >清空</button>
           </div>
-          <div v-if="history.length === 0" class="se-history-empty">暂无搜索记录</div>
+          <div class="se-history-list">
+            <div
+              v-for="(h, i) in history"
+              :key="i"
+              class="se-history-item"
+              role="button"
+              tabindex="0"
+              @click="searchWithRecord(h)"
+              @keydown.enter.prevent="searchWithRecord(h)"
+            >
+              <span class="se-history-engine">
+                <FaviconImg
+                  :url="engineMap[h.engine].home"
+                  :fallback-text="engineInitial(engineMap[h.engine])"
+                  :fallback-color="engineMap[h.engine].color"
+                  :size="16"
+                />
+              </span>
+              <span class="se-history-query">{{ h.query }}</span>
+              <span class="se-history-time">{{ formatTime(h.time) }}</span>
+              <button
+                type="button"
+                class="se-history-del"
+                title="删除记录"
+                @click.stop="deleteRecord(i)"
+              >×</button>
+            </div>
+            <div v-if="history.length === 0" class="se-history-empty">暂无搜索记录</div>
+          </div>
         </div>
-      </div>
+      </Transition>
     </div>
 
     <!-- Hint tooltip -->
-    <div class="se-hint">💡 单击切换引擎 · 双击设为默认</div>
+    <div class="se-hint">单击切换引擎 · 双击设为默认</div>
   </div>
 </template>
 
 <style scoped>
 .searchengine {
   position: absolute;
-  width: 300px;
+  width: 320px;
   z-index: 56;
   display: flex;
   flex-direction: column;
+  background: rgba(255, 255, 255, 0.42);
+  border-color: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(32px) saturate(1.25);
+  -webkit-backdrop-filter: blur(32px) saturate(1.25);
+  box-shadow: 0 14px 42px rgba(15, 23, 42, 0.06);
+}
+
+.searchengine :deep(.drag-bar--overlay) {
+  top: 4px;
+  left: 50%;
+  right: auto;
+  width: 42px;
+  height: 14px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease;
+}
+.searchengine:hover :deep(.drag-bar--overlay),
+.searchengine:focus-within :deep(.drag-bar--overlay) { opacity: 0.55; }
+.searchengine :deep(.drag-bar--overlay:hover) {
+  background: color-mix(in srgb, var(--color-ink) 13%, transparent);
+  opacity: 0.85;
+}
+.searchengine :deep(.drag-bar__dots) {
+  font-size: 9px;
+  letter-spacing: 2px;
+  line-height: 1;
 }
 
 /* Body */
 .se-body {
-  padding: 12px 14px 14px;
+  padding: 17px 15px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Engine selector */
@@ -189,47 +288,43 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   flex-wrap: wrap;
 }
 .se-engine-btn {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 5px 9px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-border);
-  background: var(--color-surface-soft);
+  gap: 5px;
+  padding: 5px 7px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
   font-family: inherit;
 }
 .se-engine-btn:hover {
-  background: var(--color-surface);
-  border-color: var(--color-ink-3);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border-color: color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 .se-engine-btn.active {
   background: var(--color-primary-soft);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 34%, transparent);
 }
-.se-engine-btn.default {
-  border-style: solid;
+.se-engine-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
-.se-engine-icon { font-size: 15px; line-height: 1; }
-.se-engine-name { font-size: 0.68rem; font-weight: 600; color: var(--color-ink-2); }
-
-.se-default-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  font-size: 0.5rem;
-  font-weight: 700;
-  color: #fff;
+.se-engine-name { font-size: 0.67rem; font-weight: 600; color: var(--color-ink-2); }
+.se-engine-btn.active .se-engine-name { color: var(--color-ink); }
+.se-default-dot {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 5px;
+  margin-left: 1px;
+  border-radius: 50%;
   background: var(--color-primary);
-  padding: 1px 5px;
-  border-radius: 6px;
-  line-height: 1.4;
-  white-space: nowrap;
-  pointer-events: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 /* Search input row */
@@ -237,64 +332,83 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-sm);
-  padding: 0 10px;
-  border: 1.5px solid var(--color-border);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 52px;
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  border-radius: 12px;
+  padding: 0 7px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.055);
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 .se-input-row:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--color-border));
+  box-shadow:
+    var(--focus-ring),
+    0 8px 24px rgba(15, 23, 42, 0.06);
   background: var(--color-surface);
 }
 .se-active-engine {
-  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
-  opacity: 0.7;
 }
 .se-input {
   flex: 1;
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.94rem;
+  font-weight: 520;
   color: var(--color-ink);
-  padding: 9px 0;
+  padding: 12px 0;
   font-family: var(--font-family);
   min-width: 0;
 }
 .se-input::placeholder { color: var(--color-ink-3); font-weight: 400; }
 .se-search-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   border: none;
-  background: var(--color-primary);
-  color: #fff;
+  background: var(--color-ink);
+  color: var(--color-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
   flex-shrink: 0;
 }
-.se-search-btn:hover:not(:disabled) { background: var(--color-primary-hover); transform: scale(1.05); }
-.se-search-btn:active:not(:disabled) { transform: scale(0.95); }
+.se-search-btn svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.se-search-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: #12382f;
+}
+.se-search-btn:active:not(:disabled) { transform: scale(0.97); }
 .se-search-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* History */
 .se-history {
-  border-top: 1px solid var(--color-border);
-  padding-top: 6px;
+  max-height: 180px;
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
 }
 .se-history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 2px 4px;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   color: var(--color-ink-3);
   font-weight: 600;
 }
@@ -311,30 +425,37 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 420, 280, false)
 .se-history-clear:hover { color: var(--color-danger); }
 
 .se-history-list {
-  height: 152px; /* fixed: ~4 items at 38px each */
+  max-height: 140px;
   overflow-y: auto;
   scroll-behavior: smooth;
-  /* 滚动条统一走全局 5px token */
 }
 
 .se-history-item {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 7px 6px;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
   transition: background 0.15s;
   font-size: 0.78rem;
+  font-family: inherit;
+  text-align: left;
 }
 .se-history-item:hover { background: rgba(0, 0, 0, 0.03); }
 html.dark .se-history-item:hover { background: rgba(255, 255, 255, 0.05); }
 
 .se-history-engine {
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  width: 20px;
-  text-align: center;
+  width: 18px;
+  height: 18px;
 }
 .se-history-query {
   flex: 1;
@@ -360,9 +481,8 @@ html.dark .se-history-item:hover { background: rgba(255, 255, 255, 0.05); }
   cursor: pointer;
   font-size: 8px;
   color: var(--color-ink-3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s, background 0.15s;
@@ -381,6 +501,17 @@ html.dark .se-history-del { background: rgba(255, 255, 255, 0.12); }
   user-select: none;
 }
 
+.se-history-enter-active,
+.se-history-leave-active {
+  overflow: hidden;
+  transition: max-height 180ms ease, opacity 140ms ease;
+}
+.se-history-enter-from,
+.se-history-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
 /* Hint */
 .se-hint {
   text-align: center;
@@ -388,5 +519,15 @@ html.dark .se-history-del { background: rgba(255, 255, 255, 0.12); }
   font-size: 0.6rem;
   color: var(--color-ink-3);
   user-select: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.searchengine:hover .se-hint,
+.searchengine:focus-within .se-hint { opacity: 0.72; }
+
+html.dark .searchengine {
+  background: rgba(30, 34, 40, 0.58);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
 }
 </style>

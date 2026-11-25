@@ -5,6 +5,9 @@ import { getWidgets, addWidget, removeWidget, getWallpaper, saveWallpaper } from
 import { WIDGETS } from './content_component/registry.ts'
 import type { WidgetInstance } from '../db/index.ts'
 import WidgetWrapper from './content_component/WidgetWrapper.vue'
+import ContextMenu from './common/ContextMenu.vue'
+import { useContextMenu } from '../composables/useContextMenu'
+import UiDialog from './common/UiDialog.vue'
 
 // Widget components — lazy loaded per type
 const widgetMap: Record<string, any> = {
@@ -16,6 +19,7 @@ const widgetMap: Record<string, any> = {
   water: defineAsyncComponent(() => import('./content_component/WaterTracker.vue')),
   whitenoise: defineAsyncComponent(() => import('./content_component/WhiteNoise.vue')),
   bookmarks: defineAsyncComponent(() => import('./content_component/Bookmarks.vue')),
+  'bookmarks-import': defineAsyncComponent(() => import('./content_component/Bookmarks.vue')),
   memo: defineAsyncComponent(() => import('./content_component/MemoNote.vue')),
   calculator: defineAsyncComponent(() => import('./content_component/Calculator.vue')),
   searchengine: defineAsyncComponent(() => import('./content_component/SearchEngine.vue')),
@@ -34,27 +38,18 @@ function getCacheKey() { return `widgets-cache-${selectedProjectId.value}` }
 async function initWidgets() {
   if (!selectedProjectId.value) { widgets.value = []; loading.value = false; return }
 
-  // 并行：缓存读取 + DB 查询 + 最短显示时间
-  const MIN_SHOW = 400 // 欢迎语至少显示 400ms
-  const start = Date.now()
-
-  // 1. 先从缓存取，让组件尽快渲染
+  // Render the cached layout immediately, then reconcile with IndexedDB.
   const cached = localStorage.getItem(getCacheKey())
   if (cached) {
-    try { widgets.value = JSON.parse(cached) } catch { /* ignore */ }
+    try {
+      widgets.value = JSON.parse(cached)
+      loading.value = false
+    } catch { /* ignore */ }
   }
 
-  // 2. 从 DB 加载最新数据
   const fresh = await getWidgets(selectedProjectId.value)
   widgets.value = fresh
   localStorage.setItem(getCacheKey(), JSON.stringify(fresh))
-
-  // 3. 确保最短显示时间
-  const elapsed = Date.now() - start
-  if (elapsed < MIN_SHOW) {
-    await new Promise(r => setTimeout(r, MIN_SHOW - elapsed))
-  }
-
   loading.value = false
 }
 
@@ -96,6 +91,19 @@ async function onRemoveWidget(id: number) {
 // Gallery
 const showGallery = ref(false)
 const selectedType = ref('')
+const {
+  showMenu: showCanvasMenu,
+  menuX: canvasMenuX,
+  menuY: canvasMenuY,
+  onContextMenu: openCanvasMenu,
+  closeMenu: closeCanvasMenu,
+} = useContextMenu()
+
+function createWidgetFromMenu() {
+  closeCanvasMenu()
+  selectedType.value = ''
+  showGallery.value = true
+}
 
 // Wallpaper
 const sceneBgStyle = computed(() => {
@@ -106,8 +114,6 @@ const sceneBgStyle = computed(() => {
 })
 
 onMounted(async () => {
-  customWallpaper.value = await getWallpaper()
-
   // Resize canvas when sidebar toggles
   const ro = new ResizeObserver(() => {
     const canvas = canvasRef.value
@@ -115,12 +121,24 @@ onMounted(async () => {
     const rect = canvas.parentElement.getBoundingClientRect()
     canvas.width = rect.width; canvas.height = rect.height
   })
-  ro.observe(document.querySelector('.calendar-scene')!)
   resizeObserver = ro
+  if (sceneRef.value) ro.observe(sceneRef.value)
+  stopSceneResizeWatch = watch(sceneRef, (scene) => {
+    if (!scene) return
+    ro.disconnect()
+    ro.observe(scene)
+  }, { flush: 'post' })
+
+  customWallpaper.value = await getWallpaper()
 })
 
 let resizeObserver: ResizeObserver | null = null
-onUnmounted(() => { cancelAnimationFrame(animId); resizeObserver?.disconnect() })
+let stopSceneResizeWatch: (() => void) | null = null
+onUnmounted(() => {
+  cancelAnimationFrame(animId)
+  resizeObserver?.disconnect()
+  stopSceneResizeWatch?.()
+})
 
 watch(customWallpaper, async (v) => {
   if (v) await saveWallpaper(v)
@@ -205,7 +223,14 @@ watch(weatherWallpaper, async (on) => {
       <span class="empty-text">在左侧选择或创建一个打卡项目</span>
     </div>
 
-    <div v-else ref="sceneRef" class="calendar-scene" :class="weatherData && weatherWallpaper ? getWeatherClass(weatherData.code) : ''" :style="sceneBgStyle">
+    <div
+      v-else
+      ref="sceneRef"
+      class="calendar-scene"
+      :class="weatherData && weatherWallpaper ? getWeatherClass(weatherData.code) : ''"
+      :style="sceneBgStyle"
+      @contextmenu.self="openCanvasMenu"
+    >
       <canvas v-if="weatherData && weatherData.code >= 1 && weatherData.code <= 99" ref="canvasRef" class="weather-canvas"></canvas>
 
       <!-- Add widget button -->
@@ -242,8 +267,15 @@ watch(weatherWallpaper, async (on) => {
       </svg>
     </div>
 
+    <ContextMenu :show="showCanvasMenu" :x="canvasMenuX" :y="canvasMenuY">
+      <button type="button" class="scene-menu-item" @click="createWidgetFromMenu">
+        <span class="scene-menu-icon" aria-hidden="true">＋</span>
+        <span>创建组件</span>
+      </button>
+    </ContextMenu>
+
     <!-- Gallery dialog -->
-    <el-dialog v-model="showGallery" title="添加组件" width="580px" :close-on-click-modal="false">
+    <UiDialog v-model="showGallery" title="添加组件" width="580px" :close-on-click-modal="false">
       <div class="gallery-grid">
         <div
           v-for="w in WIDGETS"
@@ -258,30 +290,36 @@ watch(weatherWallpaper, async (on) => {
         </div>
       </div>
       <template #footer>
-        <el-button @click="showGallery = false">取消</el-button>
-        <el-button type="primary" :disabled="!selectedType" @click="onAddWidget(selectedType); showGallery = false">添加</el-button>
+        <button type="button" class="ui-button" @click="showGallery = false">取消</button>
+        <button
+          type="button"
+          class="ui-button ui-button-primary"
+          :disabled="!selectedType"
+          @click="onAddWidget(selectedType); showGallery = false"
+        >添加</button>
       </template>
-    </el-dialog>
+    </UiDialog>
   </main>
 </template>
 
 <style scoped>
-/* 书桌表面：亚麻纸 + 细密纸纹（自包含，无外部纹理热链） */
+/* 书桌表面：低对比亚麻渐变，让工作区内容成为主体 */
 .calendar-scene {
   flex: 1; position: relative;
-  background-color: var(--scene-linen, #F0ECE4);
+  background-color: #F1ECE2;
   background-image:
-    radial-gradient(rgba(31, 36, 48, 0.035) 1px, transparent 1.4px),
-    radial-gradient(ellipse at 20% -10%, rgba(255, 255, 255, 0.6) 0%, transparent 55%);
-  background-size: 26px 26px, 100% 100%;
+    radial-gradient(ellipse at 18% -12%, rgba(255, 255, 255, 0.48) 0%, transparent 48%),
+    radial-gradient(ellipse at 82% 110%, rgba(128, 105, 74, 0.045) 0%, transparent 54%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, rgba(238, 231, 218, 0.06) 100%);
   overflow: hidden; min-height: 500px;
   transition: background-color 1.5s ease, box-shadow 1.5s ease;
 }
 html.dark .calendar-scene {
   background-color: #262A32;
   background-image:
-    radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1.4px),
-    radial-gradient(ellipse at 20% -10%, rgba(255, 255, 255, 0.05) 0%, transparent 55%);
+    radial-gradient(ellipse at 18% -12%, rgba(255, 255, 255, 0.055) 0%, transparent 48%),
+    radial-gradient(ellipse at 82% 110%, rgba(0, 0, 0, 0.12) 0%, transparent 56%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.025) 0%, rgba(0, 0, 0, 0.035) 100%);
 }
 /* 天气色调：晴=明亮亚麻纸 / 雨=石板 / 风暴=墨黑 */
 .calendar-scene.wx-clear { background: radial-gradient(ellipse at 15% 10%, rgba(255,214,140,0.5) 0%, transparent 55%), radial-gradient(ellipse at 80% 5%, rgba(255,230,170,0.35) 0%, transparent 45%), linear-gradient(180deg, #F3EAD6 0%, #EAE0C9 45%, #DDD0B4 100%); box-shadow: inset 0 0 120px rgba(255,200,80,0.15); }
@@ -306,6 +344,39 @@ html.dark .calendar-scene {
   transition: all 0.2s;
 }
 .add-widget-btn:hover { background: rgba(255,255,255,0.45); color: var(--color-primary); transform: scale(1.1); }
+
+.scene-menu-item {
+  width: 100%;
+  min-width: 132px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.scene-menu-item:hover {
+  background: var(--color-primary-soft);
+}
+
+.scene-menu-icon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-primary) 13%, transparent);
+  color: color-mix(in srgb, var(--color-primary) 62%, var(--color-ink));
+  font-size: 14px;
+  line-height: 1;
+}
 
 .gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .gallery-item {

@@ -8,7 +8,8 @@ export interface WidgetDef {
 
 export const WIDGETS: WidgetDef[] = [
   // 导航与信息
-  { type: 'bookmarks', name: '收藏夹', icon: '📑', desc: '网址图标网格', defaultPos: { x: 100, y: 100 } },
+  { type: 'bookmarks', name: '自建收藏夹', icon: '📑', desc: '手动添加常用网站', defaultPos: { x: 100, y: 100 } },
+  { type: 'bookmarks-import', name: '书签导入', icon: '📥', desc: '导入浏览器收藏夹文件', defaultPos: { x: 120, y: 120 } },
   { type: 'weather', name: '天气', icon: '🌤', desc: '实时天气 + 桌面特效', defaultPos: { x: 40, y: 440 } },
   { type: 'clock', name: '时钟', icon: '🕐', desc: '数字 / 钟表双模式', defaultPos: { x: 700, y: 80 } },
   // 效率工具

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   url: string
   fallbackText: string
   fallbackColor: string
-}>()
+  size?: number
+}>(), {
+  size: 24,
+})
 
 const containerRef = ref<HTMLElement>()
 
@@ -63,7 +66,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="favicon-wrap">
+  <div
+    ref="containerRef"
+    class="favicon-wrap"
+    :style="{ '--favicon-size': `${size}px` }"
+  >
     <!-- Hidden img that actually triggers the network request -->
     <img
       v-if="status === 'loading' || status === 'loaded'"
@@ -89,8 +96,8 @@ onUnmounted(() => {
 <style scoped>
 .favicon-wrap {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: var(--favicon-size);
+  height: var(--favicon-size);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -98,9 +105,9 @@ onUnmounted(() => {
 }
 
 .favicon-img {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: var(--favicon-size);
+  height: var(--favicon-size);
+  border-radius: calc(var(--favicon-size) * 0.22);
   transition: opacity 0.25s ease;
 }
 .favicon-img.invisible {
@@ -111,9 +118,9 @@ onUnmounted(() => {
 
 /* Skeleton shimmer animation */
 .favicon-skeleton {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: var(--favicon-size);
+  height: var(--favicon-size);
+  border-radius: calc(var(--favicon-size) * 0.22);
   background: linear-gradient(90deg, var(--color-border) 25%, var(--color-surface-soft) 50%, var(--color-border) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
@@ -126,12 +133,12 @@ onUnmounted(() => {
 
 /* Fallback */
 .favicon-fallback {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: var(--favicon-size);
+  height: var(--favicon-size);
+  border-radius: calc(var(--favicon-size) * 0.22);
   color: #fff;
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(var(--favicon-size) * 0.46);
   display: flex;
   align-items: center;
   justify-content: center;

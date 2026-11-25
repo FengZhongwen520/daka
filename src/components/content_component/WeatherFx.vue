@@ -1,6 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { weatherData } from '../../store'
+import { ref, computed } from 'vue'
+import { weatherData, weatherLocationAccuracy, weatherLocationSource } from '../../store'
+import {
+  refreshWeather,
+  setWeatherCity,
+  useAutomaticWeatherLocation,
+  weatherError,
+  weatherLoading,
+  weatherUpdatedAt,
+} from '../../utils/weather'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
@@ -12,11 +20,12 @@ export interface WeatherData {
   location: string
 }
 
-const loading = ref(true)
-const error = ref('')
-const lastUpdate = ref('')
 const viewMode = ref<'card' | 'window'>('card')
 const testMode = ref(false)
+const editingLocation = ref(false)
+const cityDraft = ref('')
+const locationSaving = ref(false)
+const locationEditError = ref('')
 
 // Test weather codes: clear, cloudy, fog, drizzle, rain, snow, storm
 const TEST_CODES = [0, 2, 45, 53, 63, 73, 95]
@@ -26,7 +35,7 @@ function toggleTestMode() {
   testMode.value = !testMode.value
   if (!testMode.value) {
     // Exiting test mode — refetch real weather
-    fetchWeather()
+    refreshWeather(true)
   }
 }
 
@@ -41,11 +50,50 @@ function cycleTestWeather() {
     windSpeed: [5, 8, 3, 6, 15, 10, 25][testIndex],
     location: '测试模式',
   }
-  lastUpdate.value = '🧪测试'
+  weatherUpdatedAt.value = '测试'
 }
 
 function toggleViewMode() {
   viewMode.value = viewMode.value === 'card' ? 'window' : 'card'
+}
+
+function beginLocationEdit() {
+  cityDraft.value = weatherData.value?.location || ''
+  locationEditError.value = ''
+  editingLocation.value = true
+}
+
+async function saveCity() {
+  const city = cityDraft.value.trim()
+  if (!city || locationSaving.value) return
+  locationSaving.value = true
+  locationEditError.value = ''
+  try {
+    const updated = await setWeatherCity(city)
+    if (updated) {
+      editingLocation.value = false
+    } else {
+      locationEditError.value = '没有找到这个城市'
+    }
+  } finally {
+    locationSaving.value = false
+  }
+}
+
+async function locateAutomatically() {
+  if (locationSaving.value) return
+  locationSaving.value = true
+  locationEditError.value = ''
+  try {
+    const updated = await useAutomaticWeatherLocation()
+    if (updated) {
+      editingLocation.value = false
+    } else {
+      locationEditError.value = '定位失败，请手动输入城市'
+    }
+  } finally {
+    locationSaving.value = false
+  }
 }
 
 const condition = computed(() => {
@@ -57,6 +105,28 @@ const condition = computed(() => {
   if (c <= 67) return 'rain'
   if (c <= 86) return 'snow'
   return 'storm'
+})
+
+const locationNotice = computed(() => {
+  if (weatherLocationSource.value === 'manual') return ''
+  if (weatherLocationSource.value === 'timezone') {
+    return '城市来自时区估算，点击修改'
+  }
+  const accuracy = weatherLocationAccuracy.value
+  if (accuracy == null) return '自动定位，点击可修改'
+  if (accuracy > 20_000) {
+    const distance = accuracy >= 1000
+      ? `${Math.round(accuracy / 1000)} km`
+      : `${Math.round(accuracy)} m`
+    return `定位误差约 ${distance}，点击修改`
+  }
+  return ''
+})
+
+const locationDisplayPrefix = computed(() => {
+  if (weatherLocationSource.value === 'timezone') return '估算 · '
+  if (weatherLocationSource.value === 'geolocation') return '自动 · '
+  return ''
 })
 
 // Pre-computed random values for particles (stable across renders)
@@ -95,52 +165,6 @@ function getWeatherLabel(code: number): string {
   return '雷暴'
 }
 
-function mapWeatherText(text: string): number {
-  if (text.includes('晴')) return 0
-  if (text.includes('多云') || text.includes('少云')) return 2
-  if (text.includes('阴')) return 3
-  if (text.includes('雾') || text.includes('霾')) return 45
-  if (text.includes('小雨') || text.includes('阵雨')) return 53
-  if (text.includes('中雨')) return 63
-  if (text.includes('大雨') || text.includes('暴雨')) return 65
-  if (text.includes('雷')) return 95
-  if (text.includes('雪') || text.includes('小雪')) return 73
-  if (text.includes('大雪') || text.includes('暴雪')) return 75
-  return 2
-}
-
-async function fetchWeather() {
-  try {
-    loading.value = true
-    error.value = ''
-
-    const res = await fetch('https://uapis.cn/api/v1/misc/weather?lang=zh')
-    if (!res.ok) throw new Error('API error')
-    const data = await res.json()
-
-    weatherData.value = {
-      temp: data.temperature,
-      code: mapWeatherText(data.weather || '多云'),
-      humidity: data.humidity,
-      windSpeed: parseInt(data.wind_power) || 0,
-      location: data.city || data.district || data.province || '',
-    }
-    lastUpdate.value = data.report_time || new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  } catch (e: any) {
-    error.value = '获取天气失败'
-    weatherData.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
-let timer: ReturnType<typeof setInterval>
-onMounted(() => {
-  fetchWeather()
-  timer = setInterval(fetchWeather, 10 * 60 * 1000)
-})
-onUnmounted(() => clearInterval(timer))
-
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `weather-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
@@ -160,11 +184,11 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 
     <!-- Card view -->
     <div v-if="viewMode === 'card'" class="wf-body">
-      <div v-if="loading && !weatherData" class="wf-loading">加载中...</div>
-      <div v-else-if="error" class="wf-error-state">
+      <div v-if="weatherLoading && !weatherData" class="wf-loading">加载中...</div>
+      <div v-else-if="weatherError && !weatherData" class="wf-error-state">
         <span class="wf-error-icon">🌧</span>
         <span>天气获取失败</span>
-        <button class="wf-retry-btn" @click="fetchWeather">重试</button>
+        <button class="wf-retry-btn" @click="refreshWeather(true)">重试</button>
       </div>
       <template v-else-if="weatherData">
         <div class="wf-main" :class="{ 'test-active': testMode }" @click="cycleTestWeather">
@@ -174,10 +198,36 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
         </div>
         <div class="wf-info">
           <div class="wf-condition">{{ getWeatherLabel(weatherData.code) }}</div>
-          <div class="wf-location">📍 {{ weatherData.location }} · {{ lastUpdate }}</div>
+          <button
+            type="button"
+            class="wf-location"
+            title="设置天气城市"
+            @click="beginLocationEdit"
+          >
+            <span>📍 {{ locationDisplayPrefix }}{{ weatherData.location }} · {{ weatherUpdatedAt }}</span>
+            <span class="wf-location-edit">修改</span>
+          </button>
+          <button
+            v-if="locationNotice && !editingLocation"
+            type="button"
+            class="wf-location-notice"
+            @click="beginLocationEdit"
+          >{{ locationNotice }}</button>
+          <form v-if="editingLocation" class="wf-city-editor" @submit.prevent="saveCity">
+            <input
+              v-model="cityDraft"
+              placeholder="输入城市，例如深圳"
+              autocomplete="off"
+            />
+            <button type="submit" :disabled="locationSaving">保存</button>
+            <button type="button" :disabled="locationSaving" @click="locateAutomatically">自动定位</button>
+            <button type="button" :disabled="locationSaving" @click="editingLocation = false">取消</button>
+            <span v-if="locationEditError">{{ locationEditError }}</span>
+          </form>
           <div class="wf-details">
             <span>💧 {{ weatherData.humidity }}%</span>
             <span>💨 {{ weatherData.windSpeed }} km/h</span>
+            <span title="Weather data by Open-Meteo">Open-Meteo</span>
           </div>
         </div>
       </template>
@@ -292,8 +342,94 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
 .wf-icon { font-size: 36px; }
 .wf-temp { font-size: 2.4rem; font-weight: 800; color: var(--color-ink); line-height: 1; }
 .wf-condition { font-size: 0.85rem; font-weight: 700; color: var(--color-ink-2); margin-bottom: 2px; }
-.wf-location { font-size: 0.7rem; color: var(--color-ink-3); margin-bottom: 4px; }
-.wf-details { display: flex; gap: 12px; font-size: 0.7rem; color: var(--color-ink-3); }
+.wf-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.7rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+.wf-location > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wf-location-edit {
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--color-primary) 62%, var(--color-ink-2));
+  font-size: 0.58rem;
+  opacity: 0.55;
+  transition: opacity 150ms ease;
+}
+.wf-location:hover .wf-location-edit,
+.wf-location:focus-visible .wf-location-edit { opacity: 1; }
+.wf-location:hover { color: var(--color-primary); }
+.wf-location-notice {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--status-idle-dark) 72%, var(--color-ink-2));
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.6rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.wf-location-notice:hover { text-decoration: underline; }
+.wf-city-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 7px;
+}
+.wf-city-editor input {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  outline: none;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: 0.68rem;
+}
+.wf-city-editor input:focus { border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.wf-city-editor button {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.62rem;
+}
+.wf-city-editor button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.wf-city-editor button:disabled { cursor: wait; opacity: 0.55; }
+.wf-city-editor > span { width: 100%; color: var(--color-danger); font-size: 0.6rem; }
+.wf-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.68rem;
+  color: var(--color-ink-3);
+}
+.wf-details span:last-child { opacity: 0.68; }
 
 /* Dark mode */
 html.dark .wf-toggle { background: rgba(255,255,255,0.1); }

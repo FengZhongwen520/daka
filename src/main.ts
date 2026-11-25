@@ -1,7 +1,4 @@
 import { createApp } from 'vue'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import 'element-plus/theme-chalk/dark/css-vars.css'
 import './style.css'
 import App from './App.vue'
 
@@ -11,5 +8,12 @@ if (localStorage.getItem('theme-mode') === 'dark') {
 }
 
 const app = createApp(App)
-app.use(ElementPlus)
 app.mount('#app')
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // The app still works normally when service workers are unavailable.
+    })
+  })
+}

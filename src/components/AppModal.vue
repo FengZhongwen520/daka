@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, inject, type Ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { addProject, updateProject, getProjects } from '../db'
 import { PRESET_COLORS, PRESET_ICONS } from '../types'
+import { notify } from '../utils/feedback'
+import UiDialog from './common/UiDialog.vue'
 
 const closeModal = inject<() => void>('closeModal')!
 const modalMode = inject<Ref<'add' | 'edit'>>('modalMode')!
@@ -29,7 +30,7 @@ watch(modalMode, async (mode) => {
         icon.value = p.icon
       }
     } catch (e) {
-      ElMessage.error('加载项目信息失败')
+      notify('加载项目信息失败', 'error')
     }
   }
   await nextTick()
@@ -45,18 +46,18 @@ async function onSubmit() {
   try {
     if (modalMode.value === 'add') {
       await addProject({ name: trimmed, color: color.value, icon: icon.value })
-      ElMessage.success('项目创建成功')
+      notify('项目创建成功', 'success')
     } else if (editingProjectId.value != null) {
       await updateProject(editingProjectId.value, {
         name: trimmed,
         color: color.value,
         icon: icon.value,
       })
-      ElMessage.success('项目已更新')
+      notify('项目已更新', 'success')
     }
     closeModal()
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    notify(e?.message || '保存失败', 'error')
   } finally {
     saving.value = false
   }
@@ -64,25 +65,27 @@ async function onSubmit() {
 </script>
 
 <template>
-  <el-dialog
+  <UiDialog
     :model-value="true"
     :title="modalMode === 'add' ? '新增打卡项目' : '编辑项目'"
     width="420px"
     :close-on-click-modal="false"
-    @close="closeModal"
+    @update:model-value="closeModal"
   >
-    <el-form label-position="top" @submit.prevent="onSubmit">
-      <el-form-item label="项目名称">
-        <el-input
+    <form class="project-form" @submit.prevent="onSubmit">
+      <label class="project-field">
+        <span>项目名称</span>
+        <input
           ref="nameInput"
           v-model="name"
+          class="ui-input"
           placeholder="例如：每天跑步"
-          size="large"
           @keyup.enter="onSubmit"
         />
-      </el-form-item>
+      </label>
 
-      <el-form-item label="颜色">
+      <div class="project-field">
+        <span>颜色</span>
         <div class="color-picker">
           <button
             v-for="c in PRESET_COLORS"
@@ -94,9 +97,10 @@ async function onSubmit() {
             @click="color = c"
           ></button>
         </div>
-      </el-form-item>
+      </div>
 
-      <el-form-item label="图标">
+      <div class="project-field">
+        <span>图标</span>
         <div class="icon-picker">
           <button
             v-for="ico in PRESET_ICONS"
@@ -109,19 +113,25 @@ async function onSubmit() {
             {{ ico }}
           </button>
         </div>
-      </el-form-item>
-    </el-form>
+      </div>
+    </form>
 
     <template #footer>
-      <el-button @click="closeModal">取消</el-button>
-      <el-button
-        type="primary"
+      <button type="button" class="ui-button" @click="closeModal">取消</button>
+      <button
+        type="button"
+        class="ui-button ui-button-primary"
         :disabled="!name.trim() || saving"
-        :loading="saving"
         @click="onSubmit"
       >
         {{ saving ? '保存中' : '确定' }}
-      </el-button>
+      </button>
     </template>
-  </el-dialog>
+  </UiDialog>
 </template>
+
+<style scoped>
+.project-form { display: flex; flex-direction: column; gap: 16px; }
+.project-field { display: flex; flex-direction: column; gap: 8px; }
+.project-field > span { color: var(--color-ink-2); font-size: 0.72rem; font-weight: 650; }
+</style>

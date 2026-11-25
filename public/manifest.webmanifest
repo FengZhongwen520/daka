@@ -1,0 +1,17 @@
+{
+  "name": "Dake 哒咔",
+  "short_name": "Dake",
+  "description": "浏览器导航页和个人工作台",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F1ECE2",
+  "theme_color": "#2DD4A8",
+  "icons": [
+    {
+      "src": "./daka.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

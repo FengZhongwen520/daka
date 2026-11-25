@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject, watch, type Ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper, themeMode, toggleTheme } from '../store'
 import { getProjects, deleteProject, updateProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
+import { refreshWeather, weatherError } from '../utils/weather'
 import { db } from '../db'
 import type { Project } from '../types'
+import SidebarIcon from './common/SidebarIcon.vue'
+import { askConfirm, notify } from '../utils/feedback'
 
 const openAddModal = inject<() => void>('openAddModal')!
 const showModal = inject<Ref<boolean>>('showModal')!
@@ -15,6 +17,7 @@ const projects = ref<Project[]>([])
 const fileInput = ref<HTMLInputElement>()
 const collapsed = ref(true)
 const activeModule = ref('')
+let weatherTimer: ReturnType<typeof setInterval> | null = null
 
 const currentProject = computed(() => projects.value.find(p => p.id === selectedProjectId.value))
 
@@ -34,7 +37,12 @@ async function loadProjects() {
 
 async function onDelete(id: number, e: Event) {
   e.stopPropagation()
-  if (!confirm('确定删除？相关打卡数据也会清除。')) return
+  const confirmed = await askConfirm(
+    '确定删除？相关打卡数据也会清除。',
+    '删除项目',
+    { confirmText: '删除', danger: true },
+  )
+  if (!confirmed) return
   await deleteProject(id)
   if (selectedProjectId.value === id) selectedProjectId.value = null
   await loadProjects()
@@ -43,7 +51,7 @@ async function onDelete(id: number, e: Event) {
 
 function onAddClick() {
   if (projects.value.length >= MAX_PROJECTS) {
-    ElMessage.warning(`最多只能创建 ${MAX_PROJECTS} 个项目`)
+    notify(`最多只能创建 ${MAX_PROJECTS} 个项目`, 'warning')
     return
   }
   openAddModal()
@@ -56,11 +64,12 @@ function openWelcome() {
 
 async function onClearData() {
   try {
-    await ElMessageBox.confirm('⚠️ 将清除当前项目所有数据及 IndexedDB 全部记录，数据将彻底丢失且不可恢复！确定继续？', '危险操作', {
-      confirmButtonText: '我已知晓，确定清除',
-      cancelButtonText: '取消',
-      type: 'warning',
-    })
+    const confirmed = await askConfirm(
+      '⚠️ 将清除当前项目所有数据及 IndexedDB 全部记录，数据将彻底丢失且不可恢复！确定继续？',
+      '危险操作',
+      { confirmText: '我已知晓，确定清除', danger: true },
+    )
+    if (!confirmed) return
     // Clear ALL IndexedDB data
     await Promise.all([
       db.projects.clear(), db.checkins.clear(), db.photos.clear(),
@@ -68,23 +77,30 @@ async function onClearData() {
     ])
     // Clear all localStorage
     localStorage.clear()
-    ElMessage.success('全部数据已清除')
+    notify('全部数据已清除', 'success')
     location.reload()
   } catch { /* cancelled */ }
 }
 
 const wallpaperInput = ref<HTMLInputElement>()
 
-function toggleWeatherWallpaper() {
-  if (!weatherWallpaper.value) {
-    ElMessage.warning('需要开启天气组件才能使用天气壁纸')
+async function toggleWeatherWallpaper() {
+  if (weatherWallpaper.value) {
+    weatherWallpaper.value = false
+    return
   }
-  weatherWallpaper.value = !weatherWallpaper.value
+
+  const ready = await refreshWeather()
+  if (!ready) {
+    notify(weatherError.value || '天气服务暂时不可用', 'warning')
+    return
+  }
+  weatherWallpaper.value = true
 }
 
 function triggerWallpaper() {
   if (weatherWallpaper.value) {
-    ElMessage.warning('请先关闭天气壁纸开关')
+    notify('请先关闭天气壁纸开关', 'warning')
     return
   }
   wallpaperInput.value?.click()
@@ -97,7 +113,7 @@ async function onWallpaperChange(e: Event) {
   reader.onload = () => {
     customWallpaper.value = reader.result as string
     activeModule.value = ''
-    ElMessage.success('壁纸已更新')
+    notify('壁纸已更新', 'success')
   }
   reader.readAsDataURL(file)
   if (wallpaperInput.value) wallpaperInput.value.value = ''
@@ -124,6 +140,14 @@ function editProjectName(p: Project) {
   }
 }
 
+function projectAvatarStyle(project: Project) {
+  return {
+    color: project.color,
+    background: `color-mix(in srgb, ${project.color} 16%, transparent)`,
+    borderColor: `color-mix(in srgb, ${project.color} 28%, transparent)`,
+  }
+}
+
 async function onFileChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -131,19 +155,36 @@ async function onFileChange(e: Event) {
     await handleImport(file)
     await loadProjects()
     if (projects.value.length > 0) selectProject(projects.value[0].id!)
-    ElMessage.success('导入成功')
+    notify('导入成功', 'success')
   } catch (err: any) {
-    ElMessage.error(err.message || '导入失败')
+    notify(err.message || '导入失败', 'error')
   }
   if (fileInput.value) fileInput.value.value = ''
 }
 
 onMounted(() => {
   loadProjects()
+  if (weatherWallpaper.value) {
+    const refreshInBackground = () => refreshWeather()
+    const requestIdle = (window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+    }).requestIdleCallback
+    if (requestIdle) {
+      requestIdle(refreshInBackground, { timeout: 1800 })
+    } else {
+      window.setTimeout(refreshInBackground, 600)
+    }
+  }
+  weatherTimer = setInterval(() => {
+    if (weatherWallpaper.value) refreshWeather(true)
+  }, 10 * 60 * 1000)
   document.addEventListener('click', onDocClick)
 })
 
-onUnmounted(() => { document.removeEventListener('click', onDocClick) })
+onUnmounted(() => {
+  if (weatherTimer) clearInterval(weatherTimer)
+  document.removeEventListener('click', onDocClick)
+})
 
 watch(showModal, async (visible) => {
   if (!visible) await loadProjects()
@@ -154,22 +195,24 @@ watch(showModal, async (visible) => {
   <aside class="app-sidebar" :class="{ collapsed }">
     <!-- Brand -->
     <div class="sidebar-brand">
-      <img src="/daka.png" alt="Dake" class="brand-logo" />
+      <span class="brand-word">daka</span>
+      <span class="brand-dot" aria-hidden="true">.</span>
     </div>
 
     <!-- Sidebar menu (3 items) -->
     <div v-show="!collapsed" class="sidebar-menu">
       <!-- Current project indicator -->
       <div class="sidebar-current-project" v-if="currentProject">
-        <span class="project-color-dot" :style="{ background: currentProject.color }"></span>
-        <span class="project-icon">{{ currentProject.icon }}</span>
+        <span class="project-avatar" :style="projectAvatarStyle(currentProject)">
+          {{ currentProject.name.charAt(0).toUpperCase() }}
+        </span>
         <span class="project-name">{{ currentProject.name }}</span>
       </div>
 
       <!-- Projects -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" :class="{ active: activeModule === 'projects' }" @click="toggleModule('projects')">
-          <span class="menu-icon">📋</span>
+          <span class="menu-icon"><SidebarIcon name="projects" /></span>
           <span class="menu-label">项目</span>
         </div>
         <div v-if="activeModule === 'projects'" class="sidebar-bubble">
@@ -180,16 +223,20 @@ watch(showModal, async (visible) => {
               class="bubble-project-item"
               :class="{ active: selectedProjectId === p.id }"
             >
-              <span class="project-color-dot" :style="{ background: p.color }" @click="selectProject(p.id!); activeModule = ''"></span>
-              <span @click="selectProject(p.id!); activeModule = ''">{{ p.icon }} {{ p.name }}</span>
+              <span
+                class="project-avatar small"
+                :style="projectAvatarStyle(p)"
+                @click="selectProject(p.id!); activeModule = ''"
+              >{{ p.name.charAt(0).toUpperCase() }}</span>
+              <span @click="selectProject(p.id!); activeModule = ''">{{ p.name }}</span>
               <button class="bubble-project-edit" @click.stop="editProjectName(p)" title="重命名">✎</button>
               <button class="bubble-project-del" @click.stop="onDelete(p.id!, $event)" title="删除">✕</button>
             </div>
             <div v-if="projects.length === 0" class="bubble-empty">暂无项目</div>
           </div>
-          <el-button class="btn-block btn-sm" @click="onAddClick" :disabled="projects.length >= MAX_PROJECTS">
+          <button type="button" class="ui-button ui-button-small btn-block" @click="onAddClick" :disabled="projects.length >= MAX_PROJECTS">
             {{ projects.length >= MAX_PROJECTS ? '项目已满' : `+ 新增 (${projects.length}/${MAX_PROJECTS})` }}
-          </el-button>
+          </button>
           <div class="bubble-row">
             <button class="sidebar-text-btn" @click="handleExport">↥ 导出</button>
             <button class="sidebar-text-btn" @click="onImportClick">↧ 导入</button>
@@ -201,17 +248,24 @@ watch(showModal, async (visible) => {
       <!-- Wallpaper -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
-          <span class="menu-icon">🖼</span>
+          <span class="menu-icon"><SidebarIcon name="wallpaper" /></span>
           <span class="menu-label">壁纸</span>
         </div>
         <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
           <div class="bubble-row">
             <span class="bubble-label">天气壁纸</span>
-            <el-switch :model-value="weatherWallpaper" size="small" @change="toggleWeatherWallpaper" />
+            <button
+              type="button"
+              class="ui-switch"
+              role="switch"
+              :aria-checked="weatherWallpaper"
+              aria-label="天气壁纸"
+              @click="toggleWeatherWallpaper"
+            />
           </div>
           <div class="bubble-row">
             <span class="bubble-label">自定义壁纸</span>
-            <el-button size="small" @click="triggerWallpaper">上传图片</el-button>
+            <button type="button" class="ui-button ui-button-small" @click="triggerWallpaper">上传图片</button>
           </div>
           <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
           <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
@@ -221,33 +275,33 @@ watch(showModal, async (visible) => {
       <!-- Help -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" :class="{ active: activeModule === 'help' }" @click="toggleModule('help')">
-          <span class="menu-icon">❓</span>
+          <span class="menu-icon"><SidebarIcon name="help" /></span>
           <span class="menu-label">帮助</span>
         </div>
         <div v-if="activeModule === 'help'" class="sidebar-bubble">
-          <p class="bubble-title">✊ Dake 哒咔</p>
+          <p class="bubble-title">Dake 哒咔</p>
           <p class="bubble-desc">浏览器导航页，你的个人工作台。</p>
           <p class="bubble-ver">v2.0 拖拽组件、多项目<br>v1.5 天气、白噪音、番茄钟<br>v1.0 基础打卡、导入导出</p>
-          <el-button class="btn-block btn-sm" @click="openWelcome">重新查看引导</el-button>
+          <button type="button" class="ui-button ui-button-small btn-block" @click="openWelcome">重新查看引导</button>
         </div>
       </div>
 
       <!-- Clear -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item danger" :class="{ active: activeModule === 'clear' }" @click="toggleModule('clear')">
-          <span class="menu-icon">🗑</span>
+          <span class="menu-icon"><SidebarIcon name="trash" /></span>
           <span class="menu-label">清除</span>
         </div>
         <div v-if="activeModule === 'clear'" class="sidebar-bubble">
           <p class="bubble-warn">清除当前项目全部数据</p>
-          <el-button class="btn-block btn-sm" type="danger" @click="onClearData">确认清除</el-button>
+          <button type="button" class="ui-button ui-button-small btn-block ui-button-danger" @click="onClearData">确认清除</button>
         </div>
       </div>
 
       <!-- Theme -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" @click="toggleTheme" :title="themeMode === 'dark' ? '切换到浅色' : '切换到深色'">
-          <span class="menu-icon">{{ themeMode === 'dark' ? '☀️' : '🌙' }}</span>
+          <span class="menu-icon"><SidebarIcon :name="themeMode === 'dark' ? 'sun' : 'moon'" /></span>
           <span class="menu-label">{{ themeMode === 'dark' ? '浅色' : '深色' }}</span>
         </div>
       </div>
@@ -256,7 +310,7 @@ watch(showModal, async (visible) => {
 
     <!-- Sidebar toggle button -->
     <button class="sidebar-collapse-btn" @click="collapsed = !collapsed" :title="collapsed ? '展开侧边栏' : '收起侧边栏'">
-      {{ collapsed ? '▶' : '◀' }}
+      <SidebarIcon :name="collapsed ? 'chevron-right' : 'chevron-left'" />
     </button>
   </aside>
 </template>
@@ -268,42 +322,88 @@ watch(showModal, async (visible) => {
   display: flex; flex-direction: column; flex-shrink: 0; overflow: visible;
   transition: width 0.25s ease; position: relative;
 }
-.app-sidebar.collapsed { width: 0; border-right: none; overflow: visible; }
+.app-sidebar.collapsed { width: 22px; border-right: none; overflow: visible; }
 
 /* Brand */
 .sidebar-brand {
-  display: flex; align-items: center; gap: 6px;
-  padding: 14px 10px 10px; flex-shrink: 0;
+  display: flex; align-items: baseline; gap: 1px;
+  padding: 16px 14px 12px; flex-shrink: 0;
+  color: var(--color-ink);
 }
-.brand-logo { height: 24px; width: auto; }
+.app-sidebar.collapsed .sidebar-brand { display: none; }
+.brand-word {
+  font-size: 1.24rem;
+  font-weight: 760;
+  letter-spacing: -0.075em;
+  line-height: 1;
+}
+.brand-dot {
+  color: var(--color-primary);
+  font-size: 1.24rem;
+  font-weight: 760;
+  line-height: 1;
+}
 
 .sidebar-collapse-btn {
-  position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
-  width: 32px; height: 72px; border-radius: 0 12px 12px 0;
-  border: 2px solid var(--color-primary); border-left: none;
-  background: var(--color-primary); cursor: pointer;
-  font-size: 14px; color: #fff; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s; z-index: 10;
-  box-shadow: 2px 0 14px rgba(45,212,168,0.35);
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 54px;
+  border-radius: 9px 0 0 9px;
+  border: 1px solid var(--color-border);
+  border-right: 0;
+  background: color-mix(in srgb, var(--color-surface-soft) 92%, transparent);
+  color: var(--color-ink-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
+  z-index: 10;
+  box-shadow: none;
 }
-.app-sidebar:not(.collapsed) .sidebar-collapse-btn {
-  background: var(--color-surface-soft);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+.app-sidebar.collapsed .sidebar-collapse-btn {
+  border-radius: 0 9px 9px 0;
+  border-right: 1px solid var(--color-border);
+  border-left: 0;
 }
 .sidebar-collapse-btn:hover {
-  transform: translateY(-50%) scale(1.08);
-  box-shadow: 2px 0 18px rgba(45,212,168,0.45);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+}
+.sidebar-collapse-btn :deep(.sidebar-icon) {
+  width: 12px;
+  height: 12px;
 }
 
 /* Current project indicator */
 .sidebar-current-project {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 12px; margin-bottom: 6px;
-  border-radius: var(--radius-sm); background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-ink) 4%, transparent);
 }
 .project-color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; min-width: 10px; }
+.project-avatar {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 0.56rem;
+  font-weight: 750;
+}
+.project-avatar.small {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+  border-radius: 6px;
+}
 
 .bubble-backdrop { position: fixed; inset: 0; z-index: 99; }
 .project-icon { font-size: 16px; flex-shrink: 0; }
@@ -325,7 +425,18 @@ watch(showModal, async (visible) => {
 }
 .sidebar-menu-item:hover { background: rgba(0,0,0,0.04); }
 .sidebar-menu-item.active { background: var(--color-primary-soft); }
-.menu-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+.menu-icon {
+  width: 22px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--color-ink-3);
+  transition: color 160ms ease;
+}
+.sidebar-menu-item:hover .menu-icon,
+.sidebar-menu-item.active .menu-icon { color: var(--color-primary); }
+.sidebar-menu-item.danger .menu-icon,
+.sidebar-menu-item.danger:hover .menu-icon { color: var(--color-danger); }
 .menu-label { font-size: 0.8rem; font-weight: 600; color: var(--color-ink-2); }
 .sidebar-menu-item.danger .menu-label { color: var(--color-danger); }
 
@@ -355,8 +466,8 @@ watch(showModal, async (visible) => {
   transition: background 0.15s;
 }
 .bubble-project-item:hover { background: rgba(0,0,0,0.04); }
-.bubble-project-item span.project-color-dot { flex: none; }
-.bubble-project-item span { flex: 1; cursor: pointer; }
+.bubble-project-item span.project-avatar { flex: 0 0 20px; }
+.bubble-project-item span:not(.project-avatar) { flex: 1; cursor: pointer; }
 .bubble-project-item.active { background: var(--color-primary-soft); color: var(--color-primary); }
 .bubble-project-edit, .bubble-project-del {
   width: 18px; height: 18px; border-radius: 50%; border: none;

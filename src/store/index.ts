@@ -18,6 +18,8 @@ export interface WeatherData {
   location: string
 }
 export const weatherData = ref<WeatherData | null>(null)
+export const weatherLocationSource = ref<'manual' | 'geolocation' | 'timezone' | null>(null)
+export const weatherLocationAccuracy = ref<number | null>(null)
 
 // Wallpaper
 export const weatherWallpaper = ref(localStorage.getItem('weather-wallpaper') !== 'false')

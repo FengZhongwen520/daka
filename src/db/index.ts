@@ -1,7 +1,15 @@
 import Dexie, { type Table } from 'dexie'
 import type { Project, CheckIn, Photo, Memo, ExportData } from '../types'
 
-export interface SiteItem { id?: number; url: string; title: string; widgetId: number; createdAt: Date }
+export type BookmarkSource = 'custom' | 'imported'
+export interface SiteItem {
+  id?: number
+  url: string
+  title: string
+  widgetId: number
+  source?: BookmarkSource
+  createdAt: Date
+}
 export interface WidgetInstance { id?: number; type: string; x: number; y: number; projectId: number }
 
 class DakaDB extends Dexie {
@@ -103,17 +111,40 @@ export async function saveMemo(memoKey: string, data: Omit<Memo, 'id' | 'created
 }
 
 // Sites (bookmark grid)
-export async function getSites(widgetId: number): Promise<SiteItem[]> {
-  return db.sites.where('widgetId').equals(widgetId).toArray()
+export async function getSites(widgetId: number, source?: BookmarkSource): Promise<SiteItem[]> {
+  const collection = db.sites.where('widgetId').equals(widgetId)
+  return source
+    ? collection.filter(site => (site.source ?? 'custom') === source).toArray()
+    : collection.toArray()
 }
-export async function addSiteItem(url: string, title: string, widgetId: number): Promise<void> {
-  await db.sites.add({ url, title, widgetId, createdAt: new Date() })
+export async function addSiteItem(
+  url: string,
+  title: string,
+  widgetId: number,
+  source: BookmarkSource = 'custom',
+): Promise<void> {
+  await db.sites.add({ url, title, widgetId, source, createdAt: new Date() })
+}
+export async function addSiteItems(
+  items: { url: string; title: string }[],
+  widgetId: number,
+  source: BookmarkSource = 'custom',
+): Promise<void> {
+  if (items.length === 0) return
+  const createdAt = new Date()
+  await db.sites.bulkAdd(
+    items.map(item => ({ ...item, widgetId, source, createdAt })),
+  )
 }
 export async function removeSiteItem(id: number): Promise<void> {
   await db.sites.delete(id)
 }
-export async function clearSites(widgetId: number): Promise<void> {
-  await db.sites.where('widgetId').equals(widgetId).delete()
+export async function clearSites(widgetId: number, source?: BookmarkSource): Promise<void> {
+  const collection = db.sites.where('widgetId').equals(widgetId)
+  await (source
+    ? collection.filter(site => (site.source ?? 'custom') === source)
+    : collection
+  ).delete()
 }
 
 // Widget instances
