@@ -7,7 +7,7 @@ const input = ref('')
 const result = ref('')
 const history = ref<{ expr: string; result: string }[]>([])
 const inputRef = ref<HTMLInputElement>()
-const keyboardVisible = ref(false)
+const keyboardVisible = ref(true)
 const title = ref('🔢 计算器')
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
