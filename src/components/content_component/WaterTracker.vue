@@ -6,6 +6,7 @@ import DragBar from '../common/DragBar.vue'
 const DAILY_TARGET = 2000 // ml
 const DRINK_AMOUNT = 250   // ml per click
 const IDLE_WARN_MIN = 60   // turn yellow after 60 min no drink
+const IDLE_NOTIFY_MS = 3 * 60 * 1000 // idle 后每 3 分钟提醒一次
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
@@ -20,10 +21,11 @@ const waterKey = computed(() => `water-${today.value}${props.widgetId != null ? 
 const saved = JSON.parse(localStorage.getItem(waterKey.value) || 'null')
 const dailyTotal = ref(saved?.total ?? 0)
 const lastDrinkTime = ref(saved?.lastDrink ?? 0)
+const lastNotifyTime = ref(saved?.lastNotify ?? 0)
 const now = ref(Date.now())
 
 function save() {
-  localStorage.setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value }))
+  localStorage.setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value, lastNotify: lastNotifyTime.value }))
 }
 
 function rolloverIfNewDay() {
@@ -32,6 +34,7 @@ function rolloverIfNewDay() {
     today.value = dayStr
     dailyTotal.value = 0
     lastDrinkTime.value = 0
+    lastNotifyTime.value = 0
   }
 }
 
@@ -59,12 +62,40 @@ const progress = computed(() => Math.min(dailyTotal.value / DAILY_TARGET, 1))
 const cups = computed(() => Math.floor(dailyTotal.value / DRINK_AMOUNT))
 const targetCups = DAILY_TARGET / DRINK_AMOUNT
 
+// 喝水超时提醒 — 进入 idle 后每 3 分钟发一次桌面通知
+let permissionRequested = false
+function ensureNotifyPermission() {
+  if (permissionRequested) return
+  permissionRequested = true
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {})
+  }
+}
+function checkIdleNotify() {
+  if (status.value !== 'idle') return
+  if (now.value - lastNotifyTime.value < IDLE_NOTIFY_MS) return
+  lastNotifyTime.value = now.value
+  save()
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    ensureNotifyPermission()
+    return
+  }
+  try {
+    new Notification('💧 该喝水了', {
+      body: `已 ${idleMinutes.value} 分钟未喝水，起来喝一杯吧`,
+      tag: 'water-idle',
+      requireInteraction: true,
+    })
+  } catch { /* 忽略通知异常 */ }
+}
+
 // Idle check timer — also handles rolling over to a new local day while the page stays open
 let idleTimer: ReturnType<typeof setInterval>
 onMounted(() => {
   idleTimer = setInterval(() => {
     now.value = Date.now()
     rolloverIfNewDay()
+    checkIdleNotify()
   }, 10000)
 })
 onUnmounted(() => clearInterval(idleTimer))
@@ -74,6 +105,7 @@ function drink() {
   rolloverIfNewDay()
   dailyTotal.value += DRINK_AMOUNT
   lastDrinkTime.value = Date.now()
+  lastNotifyTime.value = 0 // 喝水后重新计时：下次超时才提醒
   now.value = Date.now()
   save()
 }
