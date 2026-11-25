@@ -88,6 +88,6 @@ npm run dev
 ```powershell
 git switch test
 git pull --ff-only
-npm run deploy:dry-run
-npm run deploy
+.\deploy.ps1 -DryRun
+.\deploy.ps1
 ```

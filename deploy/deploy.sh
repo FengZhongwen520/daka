@@ -9,7 +9,7 @@ Builds the static Daka app and publishes it to the BaoTa site directory over SSH
 
 Required environment:
   DAKA_DEPLOY_HOST       SSH host or configured SSH alias
-  DAKA_DEPLOY_PATH       BaoTa site web root, for example /www/wwwroot/daka
+  DAKA_DEPLOY_PATH       BaoTa site web root, e.g. /www/wwwroot/MyFront/daka
   DAKA_DEPLOY_HEALTH_URL Public test URL
 
 Optional environment:
@@ -131,16 +131,17 @@ fi
 
 echo "[3/5] Uploading release $RELEASE_ID"
 if [[ "$DEPLOY_USE_SUDO" == "1" ]]; then
-  ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
-    "sudo -n install -d -m 0775 -o \"\$(id -u)\" -g \"\$(id -g)\" '$REMOTE_STAGE'"
+  REMOTE_PREPARE="sudo -n install -d -m 0775 -o \"\$(id -u)\" -g \"\$(id -g)\" '$REMOTE_STAGE'"
 else
-  ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "mkdir -p '$REMOTE_STAGE'"
+  REMOTE_PREPARE="mkdir -p '$REMOTE_STAGE'"
 fi
-tar -C dist -czf - . | "${FINAL_UPLOAD[@]}" "tar -xzf - -C '$REMOTE_STAGE'"
 
-echo "[4/5] Activating release"
-ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "
+tar -C dist -czf - . | "${FINAL_UPLOAD[@]}" "
 set -Eeuo pipefail
+$REMOTE_PREPARE
+tar -xzf - -C '$REMOTE_STAGE'
+
+echo '[4/5] Activating release'
 if [[ -d '$DEPLOY_PATH' ]]; then
   $REMOTE_SUDO mv '$DEPLOY_PATH' '$REMOTE_BACKUP'
 fi
