@@ -1438,9 +1438,6 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   padding: 14px 12px 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink) 20%, transparent) transparent;
-  scrollbar-gutter: stable;
 }
 
 .bm-grid {
@@ -1785,9 +1782,6 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
 .bm-empty {
   flex: 1;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink) 20%, transparent) transparent;
-  scrollbar-gutter: stable;
 }
 
 .bm-empty-art {
@@ -1980,9 +1974,6 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   gap: 4px;
   margin: 8px 0;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink) 20%, transparent) transparent;
-  scrollbar-gutter: stable;
 }
 
 .bm-folder {
@@ -2164,69 +2155,24 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   gap: 15px;
   padding: 18px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink) 20%, transparent) transparent;
-  scrollbar-gutter: stable;
   border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
   border-radius: 14px;
   background: var(--color-surface);
   box-shadow: 0 22px 56px rgba(15, 23, 42, 0.2);
 }
 
+.bm-body,
+.bm-empty,
+.bm-folder-list,
+.bm-form {
+  scrollbar-width: none;
+}
+
 .bm-body::-webkit-scrollbar,
 .bm-empty::-webkit-scrollbar,
 .bm-folder-list::-webkit-scrollbar,
 .bm-form::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.bm-body::-webkit-scrollbar-track,
-.bm-empty::-webkit-scrollbar-track,
-.bm-folder-list::-webkit-scrollbar-track,
-.bm-form::-webkit-scrollbar-track,
-.bm-body::-webkit-scrollbar-corner,
-.bm-empty::-webkit-scrollbar-corner,
-.bm-folder-list::-webkit-scrollbar-corner,
-.bm-form::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-.bm-body::-webkit-scrollbar-button,
-.bm-empty::-webkit-scrollbar-button,
-.bm-folder-list::-webkit-scrollbar-button,
-.bm-form::-webkit-scrollbar-button {
   display: none;
-  width: 0;
-  height: 0;
-}
-
-.bm-body::-webkit-scrollbar-thumb,
-.bm-empty::-webkit-scrollbar-thumb,
-.bm-folder-list::-webkit-scrollbar-thumb,
-.bm-form::-webkit-scrollbar-thumb {
-  min-height: 38px;
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-ink) 20%, transparent);
-  background-clip: padding-box;
-  transition: background-color 150ms ease;
-}
-
-.bm-body::-webkit-scrollbar-thumb:hover,
-.bm-empty::-webkit-scrollbar-thumb:hover,
-.bm-folder-list::-webkit-scrollbar-thumb:hover,
-.bm-form::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-ink) 32%, transparent);
-  background-clip: padding-box;
-}
-
-.bm-body::-webkit-scrollbar-thumb:active,
-.bm-empty::-webkit-scrollbar-thumb:active,
-.bm-folder-list::-webkit-scrollbar-thumb:active,
-.bm-form::-webkit-scrollbar-thumb:active {
-  background: color-mix(in srgb, var(--color-primary) 58%, var(--color-ink-3));
-  background-clip: padding-box;
 }
 
 .bm-form-head {
