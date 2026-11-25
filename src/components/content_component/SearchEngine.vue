@@ -239,7 +239,8 @@ onUnmounted(() => {
 .searchengine {
   position: absolute;
   width: 320px;
-  z-index: 56;
+  /* Above every draggable widget, below app controls, dialogs and menus. */
+  z-index: 199;
   display: flex;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.42);
