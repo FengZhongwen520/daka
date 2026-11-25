@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { weatherData, weatherLocationAccuracy, weatherLocationSource } from '../../store'
 import {
   refreshWeather,
@@ -169,6 +169,17 @@ function getWeatherLabel(code: number): string {
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `weather-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const { x, y, onDragStart } = useWidgetDrag(props, posKey, 40, 480, true)
+
+let weatherTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  refreshWeather()
+  weatherTimer = setInterval(() => refreshWeather(), 10 * 60 * 1000)
+})
+
+onUnmounted(() => {
+  if (weatherTimer) clearInterval(weatherTimer)
+})
 </script>
 
 <template>
