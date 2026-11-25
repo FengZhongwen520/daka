@@ -8,6 +8,7 @@ export interface SiteItem {
   title: string
   widgetId: number
   source?: BookmarkSource
+  order?: number
   createdAt: Date
 }
 export interface WidgetInstance { id?: number; type: string; x: number; y: number; projectId: number }
@@ -113,9 +114,32 @@ export async function saveMemo(memoKey: string, data: Omit<Memo, 'id' | 'created
 // Sites (bookmark grid)
 export async function getSites(widgetId: number, source?: BookmarkSource): Promise<SiteItem[]> {
   const collection = db.sites.where('widgetId').equals(widgetId)
-  return source
+  let items = await (source
     ? collection.filter(site => (site.source ?? 'custom') === source).toArray()
-    : collection.toArray()
+    : collection.toArray())
+
+  if (items.some(item => !Number.isInteger(item.order))) {
+    items.sort((a, b) => (a.id ?? 0) - (b.id ?? 0))
+    items = items.map((item, order) => ({ ...item, order }))
+    await db.sites.bulkPut(items)
+  }
+
+  return items.sort((a, b) => {
+    const aOrder = Number.isInteger(a.order) ? a.order! : null
+    const bOrder = Number.isInteger(b.order) ? b.order! : null
+    if (aOrder != null && bOrder != null) return aOrder - bOrder || (a.id ?? 0) - (b.id ?? 0)
+    if (aOrder != null) return -1
+    if (bOrder != null) return 1
+    return (a.id ?? 0) - (b.id ?? 0)
+  })
+}
+async function nextSiteOrder(widgetId: number, source: BookmarkSource): Promise<number> {
+  const items = await db.sites
+    .where('widgetId')
+    .equals(widgetId)
+    .filter(site => (site.source ?? 'custom') === source)
+    .toArray()
+  return items.reduce((max, site) => Math.max(max, site.order ?? -1), -1) + 1
 }
 export async function addSiteItem(
   url: string,
@@ -123,7 +147,8 @@ export async function addSiteItem(
   widgetId: number,
   source: BookmarkSource = 'custom',
 ): Promise<void> {
-  await db.sites.add({ url, title, widgetId, source, createdAt: new Date() })
+  const order = await nextSiteOrder(widgetId, source)
+  await db.sites.add({ url, title, widgetId, source, order, createdAt: new Date() })
 }
 export async function addSiteItems(
   items: { url: string; title: string }[],
@@ -132,9 +157,26 @@ export async function addSiteItems(
 ): Promise<void> {
   if (items.length === 0) return
   const createdAt = new Date()
+  const startOrder = await nextSiteOrder(widgetId, source)
   await db.sites.bulkAdd(
-    items.map(item => ({ ...item, widgetId, source, createdAt })),
+    items.map((item, index) => ({
+      ...item,
+      widgetId,
+      source,
+      order: startOrder + index,
+      createdAt,
+    })),
   )
+}
+export async function updateSiteItem(id: number, data: Partial<Pick<SiteItem, 'url' | 'title'>>): Promise<void> {
+  await db.sites.update(id, data)
+}
+export async function reorderSiteItems(items: SiteItem[]): Promise<void> {
+  await db.transaction('rw', db.sites, async () => {
+    for (const [order, item] of items.entries()) {
+      if (item.id != null && item.order !== order) await db.sites.update(item.id, { order })
+    }
+  })
 }
 export async function removeSiteItem(id: number): Promise<void> {
   await db.sites.delete(id)

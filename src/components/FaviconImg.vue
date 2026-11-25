@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   url: string
@@ -14,41 +14,91 @@ const containerRef = ref<HTMLElement>()
 
 // pending = not yet in viewport; loading = fetching; loaded = success; fallback = timeout or error
 const status = ref<'pending' | 'loading' | 'loaded' | 'fallback'>('pending')
+const candidateIndex = ref(0)
+const visible = ref(false)
 
 let timeoutId: ReturnType<typeof setTimeout> | null = null
 let observer: IntersectionObserver | null = null
 
-const src = computed(() => {
+const candidates = computed(() => {
   try {
-    const u = props.url.startsWith('http') ? props.url : 'https://' + props.url
-    return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(u)}&size=48`
+    const parsed = new URL(props.url.startsWith('http') ? props.url : `https://${props.url}`)
+    const host = parsed.hostname
+    const origin = parsed.origin
+    const direct = [
+      `${origin}/favicon.ico`,
+      `${origin}/apple-touch-icon.png`,
+      `${origin}/favicon.png`,
+    ]
+    const providers = [
+      `https://icons.duckduckgo.com/ip3/${host}.ico`,
+      `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(parsed.href)}&size=64`,
+      `https://logo.clearbit.com/${host}?size=64`,
+    ]
+    return [...new Set([...direct, ...providers])]
   } catch {
-    return ''
+    return []
   }
 })
+const src = computed(() => candidates.value[candidateIndex.value] || '')
+
+function clearTimer() {
+  if (timeoutId) {
+    clearTimeout(timeoutId)
+    timeoutId = null
+  }
+}
+
+function armTimer() {
+  clearTimer()
+  timeoutId = setTimeout(tryNextCandidate, 2200)
+}
+
+function tryNextCandidate() {
+  clearTimer()
+  candidateIndex.value += 1
+  if (candidateIndex.value < candidates.value.length) {
+    armTimer()
+  } else {
+    status.value = 'fallback'
+  }
+}
 
 function onLoad() {
-  if (timeoutId) { clearTimeout(timeoutId); timeoutId = null }
+  const image = containerRef.value?.querySelector('img')
+  if (!image || image.naturalWidth < 8 || image.naturalHeight < 8) {
+    tryNextCandidate()
+    return
+  }
+  clearTimer()
   status.value = 'loaded'
 }
 
 function onError() {
-  if (timeoutId) { clearTimeout(timeoutId); timeoutId = null }
-  status.value = 'fallback'
+  tryNextCandidate()
 }
 
 function startLoading() {
-  status.value = 'loading'
-  timeoutId = setTimeout(() => {
-    // 1s timeout — fall back to default icon
+  if (candidates.value.length === 0) {
     status.value = 'fallback'
-  }, 1000)
+    return
+  }
+  candidateIndex.value = 0
+  status.value = 'loading'
+  armTimer()
 }
 
 onMounted(() => {
+  if (!('IntersectionObserver' in window)) {
+    visible.value = true
+    startLoading()
+    return
+  }
+
   observer = new IntersectionObserver(
     (entries) => {
       if (entries[0].isIntersecting) {
+        visible.value = true
         startLoading()
         observer?.disconnect()
       }
@@ -59,8 +109,12 @@ onMounted(() => {
   if (containerRef.value) observer.observe(containerRef.value)
 })
 
+watch(() => props.url, () => {
+  if (visible.value) startLoading()
+})
+
 onUnmounted(() => {
-  if (timeoutId) clearTimeout(timeoutId)
+  clearTimer()
   observer?.disconnect()
 })
 </script>
@@ -77,6 +131,10 @@ onUnmounted(() => {
       :src="src"
       class="favicon-img"
       :class="{ invisible: status === 'loading' }"
+      alt=""
+      draggable="false"
+      decoding="async"
+      referrerpolicy="no-referrer"
       @load="onLoad"
       @error="onError"
     />

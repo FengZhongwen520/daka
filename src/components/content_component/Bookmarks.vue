@@ -5,12 +5,16 @@ import {
   addSiteItems,
   clearSites,
   getSites,
+  reorderSiteItems,
   removeSiteItem,
+  updateSiteItem,
 } from '../../db'
 import type { BookmarkSource, SiteItem } from '../../db'
 import FaviconImg from '../FaviconImg.vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
+import ContextMenu from '../common/ContextMenu.vue'
+import { useContextMenu } from '../../composables/useContextMenu'
 import { askConfirm, notify } from '../../utils/feedback'
 
 interface BookmarkLink {
@@ -35,6 +39,7 @@ interface CardSize {
 }
 
 type ResizeAxis = 'width' | 'height' | 'both'
+type DropPosition = 'before' | 'after'
 
 const CELL_WIDTH = 96
 const CELL_HEIGHT = 96
@@ -115,8 +120,10 @@ const displaySlots = computed<(SiteItem | null)[]>(() => {
   return isImport.value ? [...sites.value] : [...sites.value, null]
 })
 
-// Add form
+// Add / edit form
 const showAdd = ref(false)
+const editingSiteId = ref<number | null>(null)
+const isEditing = computed(() => editingSiteId.value != null)
 const addDraft = ref({ url: '', title: '' })
 const urlInput = ref<HTMLInputElement>()
 const saving = ref(false)
@@ -131,6 +138,7 @@ const previewTitle = computed(() => {
 })
 
 function openAddPanel() {
+  editingSiteId.value = null
   addDraft.value = { url: '', title: '' }
   showAdd.value = true
   nextTick(() => {
@@ -138,9 +146,21 @@ function openAddPanel() {
   })
 }
 
+function openEditPanel(site: SiteItem) {
+  if (site.id == null) return
+  editingSiteId.value = site.id
+  addDraft.value = { url: site.url, title: site.title }
+  showAdd.value = true
+  nextTick(() => {
+    urlInput.value?.focus()
+    urlInput.value?.select()
+  })
+}
+
 function closeAddPanel() {
   if (saving.value) return
   showAdd.value = false
+  editingSiteId.value = null
 }
 
 function resetDraft() {
@@ -157,7 +177,9 @@ async function submitAdd(keepOpen = false) {
     return
   }
 
-  const duplicate = sites.value.some(site => urlKey(site.url) === urlKey(url))
+  const duplicate = sites.value.some(site => (
+    site.id !== editingSiteId.value && urlKey(site.url) === urlKey(url)
+  ))
   if (duplicate) {
     notify('这个网站已经在收藏夹里了', 'warning')
     return
@@ -166,13 +188,18 @@ async function submitAdd(keepOpen = false) {
   saving.value = true
   try {
     const displayTitle = addDraft.value.title.trim() || siteDomain(url)
-    await addSiteItem(url, displayTitle, wid.value, source.value)
+    if (editingSiteId.value != null) {
+      await updateSiteItem(editingSiteId.value, { url, title: displayTitle })
+    } else {
+      await addSiteItem(url, displayTitle, wid.value, source.value)
+    }
     await loadSites()
-    notify(`已添加「${displayTitle}」`, 'success')
-    if (keepOpen) {
+    notify(isEditing.value ? `已更新「${displayTitle}」` : `已添加「${displayTitle}」`, 'success')
+    if (keepOpen && !isEditing.value) {
       resetDraft()
     } else {
       showAdd.value = false
+      editingSiteId.value = null
     }
   } finally {
     saving.value = false
@@ -183,6 +210,207 @@ async function removeSite(id?: number) {
   if (id == null) return
   await removeSiteItem(id)
   await loadSites()
+}
+
+// Bookmark context menu
+const {
+  showMenu: showBookmarkMenu,
+  menuX: bookmarkMenuX,
+  menuY: bookmarkMenuY,
+  onContextMenu: openBookmarkMenu,
+  closeMenu: closeBookmarkMenu,
+} = useContextMenu()
+const menuSite = ref<SiteItem | null>(null)
+
+function onBookmarkContextMenu(event: MouseEvent) {
+  event.stopPropagation()
+
+  const target = event.target as Element | null
+  if (!target || target.closest('button, input, form, .bm-form-layer, .bm-resize-handle, .drag-bar--overlay')) {
+    closeBookmarkMenu()
+    return
+  }
+  event.preventDefault()
+
+  const siteElement = target.closest<HTMLElement>('[data-bookmark-id]')
+  const siteId = Number(siteElement?.dataset.bookmarkId)
+  menuSite.value = Number.isInteger(siteId)
+    ? sites.value.find(site => site.id === siteId) ?? null
+    : null
+
+  openBookmarkMenu(event)
+  bookmarkMenuX.value = Math.max(8, Math.min(event.clientX, window.innerWidth - 176))
+  bookmarkMenuY.value = Math.max(8, Math.min(event.clientY, window.innerHeight - 132))
+}
+
+function editMenuSite() {
+  const site = menuSite.value
+  closeBookmarkMenu()
+  if (site) openEditPanel(site)
+}
+
+async function removeMenuSite() {
+  const site = menuSite.value
+  closeBookmarkMenu()
+  if (site) await removeSite(site.id)
+}
+
+function openMenuAdd() {
+  closeBookmarkMenu()
+  openAddPanel()
+}
+
+// Site sorting
+const draggingSiteId = ref<number | null>(null)
+const dragOverSiteId = ref<number | null>(null)
+const dropPosition = ref<DropPosition>('before')
+const suppressSiteClick = ref(false)
+let suppressClickTimer: ReturnType<typeof setTimeout> | null = null
+let pointerDragState: {
+  sourceId: number
+  startX: number
+  startY: number
+  pointerId: number
+  active: boolean
+  dropTargetId: number | null
+  dropAtEnd: boolean
+  dropPosition: DropPosition
+} | null = null
+
+function startSitePointerDrag(event: PointerEvent, site: SiteItem) {
+  if (event.button !== 0 || site.id == null || showAdd.value) return
+  if ((event.target as Element).closest('.bm-delete')) return
+  cancelSitePointerDrag()
+  pointerDragState = {
+    sourceId: site.id,
+    startX: event.clientX,
+    startY: event.clientY,
+    pointerId: event.pointerId,
+    active: false,
+    dropTargetId: null,
+    dropAtEnd: false,
+    dropPosition: 'after',
+  }
+  window.addEventListener('pointermove', onSitePointerMove, { passive: false })
+  window.addEventListener('pointerup', onSitePointerUp)
+  window.addEventListener('pointercancel', cancelSitePointerDrag)
+}
+
+function onSitePointerMove(event: PointerEvent) {
+  const state = pointerDragState
+  if (!state || event.pointerId !== state.pointerId) return
+  if (!state.active) {
+    if (Math.hypot(event.clientX - state.startX, event.clientY - state.startY) < 6) return
+    state.active = true
+    draggingSiteId.value = state.sourceId
+    document.body.classList.add('bm-pointer-sorting')
+  }
+
+  event.preventDefault()
+  const over = document.elementFromPoint(event.clientX, event.clientY)
+  const target = over?.closest<HTMLElement>('[data-bookmark-id]')
+  const targetId = Number(target?.dataset.bookmarkId)
+  if (target && Number.isInteger(targetId)) {
+    if (targetId === state.sourceId) {
+      state.dropTargetId = null
+      state.dropAtEnd = false
+      dragOverSiteId.value = null
+      return
+    }
+    const rect = target!.getBoundingClientRect()
+    state.dropTargetId = targetId
+    state.dropAtEnd = false
+    state.dropPosition = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+    dragOverSiteId.value = targetId
+    dropPosition.value = state.dropPosition
+    return
+  }
+
+  state.dropTargetId = null
+  state.dropAtEnd = Boolean(over?.closest('.bookmarks, .bm-body, .bm-grid, .bm-add-cell'))
+  dragOverSiteId.value = null
+}
+
+async function onSitePointerUp(event: PointerEvent) {
+  const state = pointerDragState
+  if (!state || event.pointerId !== state.pointerId) return
+  cleanupSitePointerDrag()
+  if (!state.active) return
+
+  suppressSiteClick.value = true
+  if (suppressClickTimer) clearTimeout(suppressClickTimer)
+  suppressClickTimer = setTimeout(() => {
+    suppressSiteClick.value = false
+  }, 240)
+
+  if (state.dropTargetId != null || state.dropAtEnd) {
+    await moveSiteToTarget(state.sourceId, state.dropTargetId, state.dropPosition)
+  }
+  finishSiteDrag()
+}
+
+function cleanupSitePointerDrag() {
+  pointerDragState = null
+  window.removeEventListener('pointermove', onSitePointerMove)
+  window.removeEventListener('pointerup', onSitePointerUp)
+  window.removeEventListener('pointercancel', cancelSitePointerDrag)
+  document.body.classList.remove('bm-pointer-sorting')
+}
+
+function cancelSitePointerDrag() {
+  cleanupSitePointerDrag()
+  finishSiteDrag()
+}
+
+function onSiteLinkClick(event: MouseEvent) {
+  event.stopPropagation()
+  if (!suppressSiteClick.value) return
+  event.preventDefault()
+  suppressSiteClick.value = false
+}
+
+async function persistSiteOrder(nextSites: SiteItem[]) {
+  sites.value = nextSites
+  localStorage.setItem(sitesCacheKey.value, JSON.stringify(nextSites))
+  try {
+    await reorderSiteItems(nextSites)
+  } catch {
+    notify('排序已更新，但保存失败，请稍后重试', 'warning')
+  }
+}
+
+async function moveSiteToTarget(sourceId: number, targetId: number | null, position: DropPosition) {
+  if (sourceId == null || sourceId === targetId) {
+    finishSiteDrag()
+    return
+  }
+
+  const nextSites = [...sites.value]
+  const sourceIndex = nextSites.findIndex(site => site.id === sourceId)
+  if (sourceIndex < 0) {
+    finishSiteDrag()
+    return
+  }
+
+  const [source] = nextSites.splice(sourceIndex, 1)
+  if (targetId == null) {
+    nextSites.push(source)
+  } else {
+    let targetIndex = nextSites.findIndex(site => site.id === targetId)
+    if (targetIndex < 0) nextSites.push(source)
+    else {
+      if (position === 'after') targetIndex += 1
+      nextSites.splice(targetIndex, 0, source)
+    }
+  }
+
+  finishSiteDrag()
+  await persistSiteOrder(nextSites)
+}
+
+function finishSiteDrag() {
+  draggingSiteId.value = null
+  dragOverSiteId.value = null
 }
 
 function siteInitial(text: string) {
@@ -444,7 +672,9 @@ async function importAll() {
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && showAdd.value) closeAddPanel()
+  if (event.key !== 'Escape') return
+  closeBookmarkMenu()
+  if (showAdd.value) closeAddPanel()
 }
 
 onMounted(async () => {
@@ -456,6 +686,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   stopResize()
+  closeBookmarkMenu()
+  cancelSitePointerDrag()
+  if (suppressClickTimer) clearTimeout(suppressClickTimer)
   window.removeEventListener('keydown', onWindowKeydown)
   window.removeEventListener('resize', updateViewport)
 })
@@ -604,6 +837,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
         'bm-is-import': isImport,
         'bm-editing': showAdd,
         'bm-resizing': resizing != null,
+        'bm-sorting': draggingSiteId != null,
       },
     ]"
     :style="{
@@ -612,6 +846,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
       width: cardWidth + 'px',
       height: cardNaturalHeight + 'px',
     }"
+    @contextmenu="onBookmarkContextMenu"
   >
     <DragBar variant="overlay" :on-drag-start="beginDrag" />
 
@@ -649,6 +884,13 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
             v-for="slot in displaySlots"
             :key="slot?.id ?? 'add'"
             class="bm-site-wrap"
+            :class="{
+              'is-dragging': slot?.id === draggingSiteId,
+              'is-drop-before': slot?.id === dragOverSiteId && dropPosition === 'before',
+              'is-drop-after': slot?.id === dragOverSiteId && dropPosition === 'after',
+            }"
+            :data-bookmark-id="slot?.id"
+            @pointerdown="slot && startSitePointerDrag($event, slot)"
           >
             <template v-if="slot">
               <a
@@ -657,7 +899,8 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
                 rel="noreferrer"
                 class="bm-site"
                 :title="slot.title"
-                @click.stop
+                draggable="false"
+                @click="onSiteLinkClick"
               >
                 <span class="bm-icon-shell">
                   <FaviconImg
@@ -674,6 +917,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
                   </span>
                 </span>
               </a>
+              <span class="bm-drag-grip" aria-hidden="true">⠿</span>
               <button
                 type="button"
                 class="bm-delete"
@@ -797,6 +1041,13 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
               v-for="slot in displaySlots"
               :key="slot!.id"
               class="bm-site-wrap"
+              :class="{
+                'is-dragging': slot!.id === draggingSiteId,
+                'is-drop-before': slot!.id === dragOverSiteId && dropPosition === 'before',
+                'is-drop-after': slot!.id === dragOverSiteId && dropPosition === 'after',
+              }"
+              :data-bookmark-id="slot!.id"
+              @pointerdown="startSitePointerDrag($event, slot!)"
             >
               <a
                 :href="slot!.url"
@@ -804,7 +1055,8 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
                 rel="noreferrer"
                 class="bm-site"
                 :title="slot!.title"
-                @click.stop
+                draggable="false"
+                @click="onSiteLinkClick"
               >
                 <span class="bm-icon-shell">
                   <FaviconImg
@@ -821,6 +1073,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
                   </span>
                 </span>
               </a>
+              <span class="bm-drag-grip" aria-hidden="true">⠿</span>
               <button
                 type="button"
                 class="bm-delete"
@@ -872,6 +1125,23 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
       </Transition>
     </div>
 
+    <ContextMenu :show="showBookmarkMenu" :x="bookmarkMenuX" :y="bookmarkMenuY">
+      <template v-if="menuSite">
+        <button type="button" class="bm-context-item" @click="editMenuSite">
+          <span class="bm-context-icon" aria-hidden="true">↗</span>
+          修改网址
+        </button>
+        <button type="button" class="bm-context-item danger" @click="removeMenuSite">
+          <span class="bm-context-icon" aria-hidden="true">×</span>
+          删除网站
+        </button>
+      </template>
+      <button v-else type="button" class="bm-context-item" @click="openMenuAdd">
+        <span class="bm-context-icon" aria-hidden="true">＋</span>
+        添加网址
+      </button>
+    </ContextMenu>
+
     <input
       ref="fileInput"
       type="file"
@@ -896,13 +1166,13 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
         >
           <div class="bm-form-head">
             <div>
-              <span class="bm-eyebrow">新建站点</span>
-              <h3 :id="formTitleId">添加一个常用网站</h3>
+              <span class="bm-eyebrow">{{ isEditing ? '编辑站点' : '新建站点' }}</span>
+              <h3 :id="formTitleId">{{ isEditing ? '修改网站信息' : '添加一个常用网站' }}</h3>
             </div>
             <button
               type="button"
               class="bm-icon-btn"
-              aria-label="关闭添加表单"
+              :aria-label="isEditing ? '关闭编辑表单' : '关闭添加表单'"
               @click="closeAddPanel"
             >
               <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -962,6 +1232,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
             </button>
             <div class="bm-form-actions-right">
               <button
+                v-if="!isEditing"
                 type="button"
                 class="bm-quiet-btn"
                 :disabled="saving"
@@ -970,7 +1241,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
                 保存并继续
               </button>
               <button type="submit" class="bm-primary-btn compact" :disabled="saving">
-                {{ saving ? '保存中…' : '保存站点' }}
+                {{ saving ? '保存中…' : (isEditing ? '保存修改' : '保存站点') }}
               </button>
             </div>
           </div>
@@ -1180,6 +1451,39 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   min-height: 0;
 }
 
+.bm-site-wrap::before {
+  content: "";
+  position: absolute;
+  z-index: 6;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.bm-site-wrap.is-drop-before::before {
+  left: -6px;
+  opacity: 1;
+}
+
+.bm-site-wrap.is-drop-after::before {
+  right: -6px;
+  opacity: 1;
+}
+
+.bm-site-wrap.is-dragging {
+  opacity: 0.34;
+}
+
+.bm-site-wrap.is-dragging::before {
+  opacity: 0;
+}
+
 .bm-site {
   width: 100%;
   height: 100%;
@@ -1197,6 +1501,7 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   text-decoration: none;
   box-shadow: none;
   overflow: hidden;
+  cursor: grab;
   transition:
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
     background 180ms ease,
@@ -1214,7 +1519,41 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
 }
 
 .bm-site:active {
+  cursor: grabbing;
   transform: translateY(0) scale(0.99);
+}
+
+.bm-sorting,
+.bm-sorting .bm-site {
+  user-select: none;
+}
+
+:global(body.bm-pointer-sorting) {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.bm-sorting .bm-site:hover {
+  transform: none;
+}
+
+.bm-drag-grip {
+  position: absolute;
+  z-index: 2;
+  top: 5px;
+  left: 6px;
+  color: var(--color-ink-3);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bm-site-wrap:hover .bm-drag-grip {
+    opacity: 0.46;
+  }
 }
 
 .bm-site:focus-visible,
@@ -1322,6 +1661,52 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
 .bm-delete:hover {
   background: var(--color-danger);
   opacity: 1;
+}
+
+.bm-context-item {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 650;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bm-context-item + .bm-context-item {
+  margin-top: 2px;
+}
+
+.bm-context-item:hover,
+.bm-context-item:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  color: var(--color-ink);
+}
+
+.bm-context-item.danger {
+  color: var(--color-danger);
+}
+
+.bm-context-item.danger:hover,
+.bm-context-item.danger:focus-visible {
+  background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+}
+
+.bm-context-icon {
+  width: 16px;
+  flex: 0 0 16px;
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .bm-add-cell {
@@ -2080,6 +2465,14 @@ html.dark .bm-form {
     min-height: 34px;
     padding-inline: 9px;
     font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-site,
+  .bm-site-wrap::before,
+  .bm-drag-grip {
+    transition: none;
   }
 }
 
