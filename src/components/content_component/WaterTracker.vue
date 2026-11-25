@@ -119,7 +119,7 @@ const waveHeight = computed(() => progress.value * 80)
 </script>
 
 <template>
-  <div class="water-tracker" :class="status" :style="{ left: x + 'px', top: y + 'px' }">
+  <div class="water-tracker widget-card" :class="status" :style="{ left: x + 'px', top: y + 'px' }">
     <DragBar variant="header" :on-drag-start="onDragStart" :title="statusLabel" :editable="false" />
 
     <!-- Cup -->
@@ -184,20 +184,15 @@ const waveHeight = computed(() => progress.value * 80)
 .water-tracker {
   position: absolute;
   width: 180px;
-  background: var(--color-paper);
   border-radius: var(--radius-md);
-  box-shadow: 2px 2px 0 var(--color-line), 6px 8px 20px rgba(0,0,0,0.2);
   z-index: 57;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow 0.2s, background 0.5s;
+  transition: box-shadow 180ms ease, background 0.5s;
 }
-.water-tracker.idle { background: color-mix(in srgb, var(--status-idle) 7%, var(--color-paper)); }
+.water-tracker.idle { background: color-mix(in srgb, var(--status-idle) 7%, var(--widget-glass-bg)); }
 .water-tracker.idle :deep(.drag-bar--header) { background: var(--status-idle-soft); }
-.water-tracker:hover {
-  box-shadow: 2px 2px 0 var(--color-line), 8px 12px 24px rgba(0,0,0,0.25);
-}
 
 /* Cup outline — dark-aware stroke */
 .cup-outline { stroke: rgba(0, 0, 0, 0.2); }

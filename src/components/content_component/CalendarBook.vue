@@ -442,11 +442,16 @@ onMounted(updateTicker)
 .cal-card {
   position: relative;
   width: 420px;
-  background: var(--color-paper);
+  background: var(--widget-glass-bg);
+  backdrop-filter: blur(32px) saturate(1.25);
+  -webkit-backdrop-filter: blur(32px) saturate(1.25);
+  border: 1px solid var(--widget-glass-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-paper);
+  box-shadow: var(--widget-glass-shadow);
   padding: 16px 22px 14px;
+  transition: box-shadow 180ms ease, border-color 180ms ease;
 }
+.cal-card:hover { box-shadow: var(--widget-glass-shadow-hover); }
 /* 顶缘薄荷细线（自带上圆角，卡外不裁剪以容纳悬浮弹窗） */
 .cal-card::before {
   content: '';

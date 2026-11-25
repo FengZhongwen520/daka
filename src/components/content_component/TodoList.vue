@@ -557,7 +557,7 @@ onUnmounted(() => {
 <template>
   <div
     ref="rootRef"
-    class="todo-pad"
+    class="todo-pad widget-card"
     :class="{ 'is-resizing': resizeAxis != null }"
     :style="{
       left: displayX + 'px',
@@ -758,9 +758,7 @@ onUnmounted(() => {
   position: absolute;
   display: flex;
   flex-direction: column;
-  background: var(--color-paper);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-paper);
   overflow: hidden;
   z-index: 56;
 }

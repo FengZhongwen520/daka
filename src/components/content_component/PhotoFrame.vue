@@ -86,7 +86,7 @@ function prev(e: Event) { e.stopPropagation(); if (photos.value.length > 1) curr
 </script>
 
 <template>
-  <div class="photo-frame" :style="{ left: x + 'px', top: y + 'px' }" @click="onFrameClick">
+  <div class="photo-frame widget-card" :style="{ left: x + 'px', top: y + 'px' }" @click="onFrameClick">
     <DragBar variant="overlay" :on-drag-start="onDragStart" />
     <span v-if="photos.length === 0" class="photo-placeholder">+</span>
     <template v-else>
@@ -107,12 +107,11 @@ function prev(e: Event) { e.stopPropagation(); if (photos.value.length > 1) curr
 <style scoped>
 /* Physical paper object — matte stays light in both themes */
 .photo-frame {
-  position: absolute; width: 160px; height: 200px; background: var(--color-paper);
-  border-radius: 3px; box-shadow: 2px 2px 0 var(--color-line), 8px 10px 20px rgba(0,0,0,0.25);
+  position: absolute; width: 160px; height: 200px;
+  border-radius: 3px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; transition: box-shadow 0.3s; overflow: hidden; z-index: 55;
+  cursor: pointer; transition: box-shadow 180ms ease; overflow: hidden; z-index: 55;
 }
-.photo-frame:hover { box-shadow: 4px 4px 0 var(--color-line), 12px 14px 28px rgba(0,0,0,0.3); }
 .photo-frame:hover :deep(.drag-bar--overlay) { opacity: 1; }
 .photo-placeholder { font-size: 48px; color: #d1d8e0; font-weight: 200; margin-top: 8px; }
 .photo-img { width: 100%; height: 100%; object-fit: cover; }

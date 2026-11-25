@@ -243,11 +243,6 @@ onUnmounted(() => {
   z-index: 199;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.42);
-  border-color: rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(32px) saturate(1.25);
-  -webkit-backdrop-filter: blur(32px) saturate(1.25);
-  box-shadow: 0 14px 42px rgba(15, 23, 42, 0.06);
 }
 
 .searchengine :deep(.drag-bar--overlay) {
@@ -526,9 +521,4 @@ html.dark .se-history-del { background: rgba(255, 255, 255, 0.12); }
 .searchengine:hover .se-hint,
 .searchengine:focus-within .se-hint { opacity: 0.72; }
 
-html.dark .searchengine {
-  background: rgba(30, 34, 40, 0.58);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
-}
 </style>

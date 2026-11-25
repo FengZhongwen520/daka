@@ -1260,18 +1260,6 @@ function nudgeSize(event: KeyboardEvent, axis: ResizeAxis) {
   container-type: size;
 }
 
-.bookmarks.widget-card {
-  background: rgba(255, 255, 255, 0.42);
-  border-color: rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(32px) saturate(1.25);
-  -webkit-backdrop-filter: blur(32px) saturate(1.25);
-  box-shadow: 0 14px 42px rgba(15, 23, 42, 0.06);
-}
-
-.bookmarks.widget-card:hover {
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-}
-
 .bookmarks.bm-editing {
   min-height: min(500px, calc(100vh - 52px));
 }
@@ -2385,16 +2373,6 @@ html.dark .bm-icon-shell {
   box-shadow:
     0 5px 14px rgba(0, 0, 0, 0.3),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
-}
-
-html.dark .bookmarks.widget-card {
-  background: rgba(30, 34, 40, 0.58);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
-}
-
-html.dark .bookmarks.widget-card:hover {
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
 }
 
 html.dark .bm-site {

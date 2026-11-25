@@ -174,7 +174,7 @@ function playBeep() {
 </script>
 
 <template>
-  <div class="pomodoro" :class="[mode, { running }]" :style="{ left: x + 'px', top: y + 'px' }">
+  <div class="pomodoro widget-card" :class="[mode, { running }]" :style="{ left: x + 'px', top: y + 'px' }">
     <DragBar variant="header" :on-drag-start="handleDragStart" :title="mode === 'focus' ? '🍅 专注' : '☕ 休息'" :editable="false">
       <button class="pom-gear-btn" :class="{ on: notificationsEnabled }" @click="toggleNotify" title="桌面通知" style="margin-right: 6px">🔔</button>
       <button class="pom-gear-btn" @click="openSettings" title="配置时间">⚙</button>
@@ -225,29 +225,56 @@ function playBeep() {
   position: absolute;
   width: 180px;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-paper);
   z-index: 57;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: background 0.6s ease, box-shadow 0.6s ease;
 }
-.pomodoro.focus { background: linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 5%, #fff) 0%, #fff 40%); }
+.pomodoro.focus {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 7%, transparent) 0%, transparent 42%),
+    var(--widget-glass-bg);
+}
 .pomodoro.focus.running {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 9%, #fff) 0%, color-mix(in srgb, var(--color-coral) 4%, #fff) 30%, #fff 70%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-coral) 12%, transparent) 0%, color-mix(in srgb, var(--color-coral) 5%, transparent) 30%, transparent 70%),
+    var(--widget-glass-bg);
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-coral) 15%, transparent), 6px 8px 24px color-mix(in srgb, var(--color-coral) 25%, transparent);
 }
-.pomodoro.break { background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #fff) 0%, #fff 40%); }
+.pomodoro.break {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 7%, transparent) 0%, transparent 42%),
+    var(--widget-glass-bg);
+}
 .pomodoro.break.running {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 11%, #fff) 0%, color-mix(in srgb, var(--color-primary) 5%, #fff) 30%, #fff 70%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 14%, transparent) 0%, color-mix(in srgb, var(--color-primary) 6%, transparent) 30%, transparent 70%),
+    var(--widget-glass-bg);
   box-shadow: 2px 2px 0 color-mix(in srgb, var(--color-primary) 15%, transparent), 6px 8px 24px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 /* 暗色纸面 — 专注/休息 保留色调但使用深色底 */
-html.dark .pomodoro.focus { background: linear-gradient(180deg, #2b2426 0%, #232228 40%); }
-html.dark .pomodoro.focus.running { background: linear-gradient(180deg, #35272a 0%, #2a2529 30%, #232228 70%); }
-html.dark .pomodoro.break { background: linear-gradient(180deg, #1e2a26 0%, #22242a 40%); }
-html.dark .pomodoro.break.running { background: linear-gradient(180deg, #1d332c 0%, #202a29 30%, #22242a 70%); }
+html.dark .pomodoro.focus {
+  background:
+    linear-gradient(180deg, rgba(255, 118, 118, 0.1) 0%, transparent 42%),
+    var(--widget-glass-bg);
+}
+html.dark .pomodoro.focus.running {
+  background:
+    linear-gradient(180deg, rgba(255, 118, 118, 0.16) 0%, rgba(255, 118, 118, 0.06) 30%, transparent 70%),
+    var(--widget-glass-bg);
+}
+html.dark .pomodoro.break {
+  background:
+    linear-gradient(180deg, rgba(45, 212, 168, 0.1) 0%, transparent 42%),
+    var(--widget-glass-bg);
+}
+html.dark .pomodoro.break.running {
+  background:
+    linear-gradient(180deg, rgba(45, 212, 168, 0.17) 0%, rgba(45, 212, 168, 0.07) 30%, transparent 70%),
+    var(--widget-glass-bg);
+}
 
 .pom-gear-btn {
   margin-left: auto;
