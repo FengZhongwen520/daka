@@ -5,13 +5,18 @@ usage() {
   cat <<'EOF'
 Usage: deploy/deploy.sh --env test [--dry-run] [--help]
 
-Builds the static Daka app and publishes dist/ to the GitHub Pages branch.
+Builds the static Daka app and publishes it to the BaoTa site directory over SSH.
 
-Environment overrides:
-  DEPLOY_REMOTE       Git remote to push to (default: gitub)
-  DEPLOY_BRANCH       Deployment branch (default: gh-pages)
-  DEPLOY_HEALTH_URL   URL probed after publish
-                      (default: https://fengzhongwen520.github.io/daka/)
+Required environment:
+  DAKA_DEPLOY_HOST       SSH host or configured SSH alias
+  DAKA_DEPLOY_PATH       BaoTa site web root, for example /www/wwwroot/daka
+  DAKA_DEPLOY_HEALTH_URL Public test URL
+
+Optional environment:
+  DAKA_DEPLOY_USER       SSH user (default: root)
+  DAKA_DEPLOY_PORT       SSH port (default: 22)
+  DAKA_DEPLOY_SSH_KEY    Private key path; agent authentication is used if unset
+  DAKA_DEPLOY_KEEP       Previous release copies retained (default: 3)
 EOF
 }
 
@@ -48,6 +53,10 @@ if [[ "$TARGET_ENV" != "test" ]]; then
 fi
 
 cd "$ROOT"
+if [[ -f "deploy/baota.env" ]]; then
+  # shellcheck disable=SC1091
+  source "deploy/baota.env"
+fi
 
 CURRENT_BRANCH="$(git branch --show-current)"
 if [[ "$CURRENT_BRANCH" != "test" ]]; then
@@ -60,51 +69,66 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-DEPLOY_REMOTE="${DEPLOY_REMOTE:-gitub}"
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-gh-pages}"
-DEPLOY_HEALTH_URL="${DEPLOY_HEALTH_URL:-https://fengzhongwen520.github.io/daka/}"
-REMOTE_URL="$(git remote get-url "$DEPLOY_REMOTE")"
-COMMIT_SHA="$(git rev-parse --short HEAD)"
+DEPLOY_HOST="${DAKA_DEPLOY_HOST:-47.106.20.125}"
+DEPLOY_USER="${DAKA_DEPLOY_USER:-root}"
+DEPLOY_PORT="${DAKA_DEPLOY_PORT:-22}"
+DEPLOY_PATH="${DAKA_DEPLOY_PATH:-/www/wwwroot/daka}"
+DEPLOY_HEALTH_URL="${DAKA_DEPLOY_HEALTH_URL:-http://47.106.20.125/}"
+DEPLOY_SSH_KEY="${DAKA_DEPLOY_SSH_KEY:-}"
+DEPLOY_KEEP="${DAKA_DEPLOY_KEEP:-3}"
+SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 
-echo "[1/4] Installing dependencies"
+SSH_OPTS=(-p "$DEPLOY_PORT" -o StrictHostKeyChecking=yes -o ConnectTimeout=10)
+if [[ -n "$DEPLOY_SSH_KEY" ]]; then
+  SSH_OPTS+=(-i "$DEPLOY_SSH_KEY")
+fi
+
+echo "Target: $SSH_TARGET:$DEPLOY_PATH"
+echo "Health: $DEPLOY_HEALTH_URL"
+
+echo "[1/5] Installing dependencies"
 npm ci
 
-echo "[2/4] Building static app"
+echo "[2/5] Building static app"
 npm run build
 touch dist/.nojekyll
 
-STAGE_DIR="$(mktemp -d)"
-trap 'rm -rf "$STAGE_DIR"' EXIT
-cp -R dist/. "$STAGE_DIR/"
-
-echo "[3/4] Creating deployment commit"
-git -C "$STAGE_DIR" init -q
-git -C "$STAGE_DIR" checkout -q -b "$DEPLOY_BRANCH"
-git -C "$STAGE_DIR" add -A
-git -C "$STAGE_DIR" \
-  -c user.name="Daka Deploy" \
-  -c user.email="deploy@local.invalid" \
-  commit -q -m "deploy: test $COMMIT_SHA"
+COMMIT_SHA="$(git rev-parse --short HEAD)"
+RELEASE_ID="$(date +%Y%m%d-%H%M%S)-$COMMIT_SHA"
+REMOTE_STAGE="${DEPLOY_PATH}.deploy-${RELEASE_ID}"
+REMOTE_BACKUP="${DEPLOY_PATH}.previous.${RELEASE_ID}"
+FINAL_UPLOAD=(ssh "${SSH_OPTS[@]}" "$SSH_TARGET")
 
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "[dry-run] git push --force $DEPLOY_REMOTE HEAD:$DEPLOY_BRANCH"
+  echo "[dry-run] ssh $SSH_TARGET mkdir -p $REMOTE_STAGE"
+  echo "[dry-run] tar dist/ | ssh $SSH_TARGET tar -xzf - -C $REMOTE_STAGE"
+  echo "[dry-run] atomically replace $DEPLOY_PATH"
   echo "[dry-run] health check $DEPLOY_HEALTH_URL"
   exit 0
 fi
 
-echo "[4/4] Publishing to $DEPLOY_REMOTE/$DEPLOY_BRANCH"
-git -C "$STAGE_DIR" push --force "$REMOTE_URL" "HEAD:refs/heads/$DEPLOY_BRANCH"
+echo "[3/5] Uploading release $RELEASE_ID"
+tar -C dist -czf - . | "${FINAL_UPLOAD[@]}" "mkdir -p '$REMOTE_STAGE' && tar -xzf - -C '$REMOTE_STAGE'"
 
-echo "Published commit $COMMIT_SHA"
-echo "Health check: $DEPLOY_HEALTH_URL"
-for _ in $(seq 1 12); do
-  if curl -fsS --max-time 8 "$DEPLOY_HEALTH_URL" >/dev/null; then
-    echo "Health check passed"
-    exit 0
-  fi
-  sleep 5
-done
+echo "[4/5] Activating release"
+ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "
+set -Eeuo pipefail
+if [[ -d '$DEPLOY_PATH' ]]; then
+  mv '$DEPLOY_PATH' '$REMOTE_BACKUP'
+fi
+if ! mv '$REMOTE_STAGE' '$DEPLOY_PATH'; then
+  mv '$REMOTE_BACKUP' '$DEPLOY_PATH'
+  exit 1
+fi
+find '$(dirname "$DEPLOY_PATH")' -maxdepth 1 -type d -name '$(basename "$DEPLOY_PATH").previous.*' | sort -r | tail -n +$((DEPLOY_KEEP + 1)) | xargs -r rm -rf
+"
 
-echo "Deployment branch was pushed, but the public URL is not healthy yet." >&2
-echo "Check GitHub Pages settings for $DEPLOY_HEALTH_URL" >&2
+echo "Deployed test commit $COMMIT_SHA"
+echo "[5/5] Health check: $DEPLOY_HEALTH_URL"
+if curl -fsS --max-time 12 "$DEPLOY_HEALTH_URL" >/dev/null; then
+  echo "Health check passed"
+  exit 0
+fi
+
+echo "Upload completed, but health check failed for $DEPLOY_HEALTH_URL" >&2
 exit 1
