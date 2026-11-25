@@ -29,21 +29,45 @@ watch(weatherWallpaper, (v) => {
   localStorage.setItem('weather-wallpaper', String(v))
 })
 
-// Theme (light / dark)
-export type ThemeMode = 'light' | 'dark'
-export const themeMode = ref<ThemeMode>((localStorage.getItem('theme-mode') as ThemeMode) || 'light')
+// Theme (light / dark / system)
+export type ThemeMode = 'light' | 'dark' | 'system'
+export type ResolvedTheme = Exclude<ThemeMode, 'system'>
 
-function applyTheme() {
-  document.documentElement.classList.toggle('dark', themeMode.value === 'dark')
+function readThemeMode(): ThemeMode {
+  try {
+    const stored = localStorage.getItem('theme-mode')
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
+  } catch {
+    // Storage can be unavailable in restrictive browser modes.
+  }
+  return 'system'
 }
-watch(themeMode, (m) => {
-  localStorage.setItem('theme-mode', m)
-  applyTheme()
+
+const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
+export const themeMode = ref<ThemeMode>(readThemeMode())
+export const resolvedTheme = ref<ResolvedTheme>('light')
+
+function syncTheme() {
+  const resolved: ResolvedTheme = themeMode.value === 'system'
+    ? (systemThemeQuery.matches ? 'dark' : 'light')
+    : themeMode.value
+  resolvedTheme.value = resolved
+  document.documentElement.classList.toggle('dark', resolved === 'dark')
+  document.documentElement.style.colorScheme = resolved
+}
+
+watch(themeMode, (mode) => {
+  try {
+    localStorage.setItem('theme-mode', mode)
+  } catch {
+    // The selected theme still applies for the current session.
+  }
+  syncTheme()
 }, { immediate: true })
 
-export function toggleTheme() {
-  themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
-}
+systemThemeQuery.addEventListener('change', () => {
+  if (themeMode.value === 'system') syncTheme()
+})
 
 export function selectProject(id: number) {
   selectedProjectId.value = id

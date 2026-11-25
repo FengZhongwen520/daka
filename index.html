@@ -9,9 +9,12 @@
     <title>daka - 新标签页</title>
     <script>
       try {
-        if (localStorage.getItem('theme-mode') === 'dark') {
-          document.documentElement.classList.add('dark')
-        }
+        var storedTheme = localStorage.getItem('theme-mode')
+        var followsSystem = storedTheme !== 'light' && storedTheme !== 'dark'
+        var dark = storedTheme === 'dark'
+          || (followsSystem && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
       } catch {}
     </script>
     <style>

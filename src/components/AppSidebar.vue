@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, inject, watch, type Ref } from 'vue'
-import { selectedProjectId, selectProject, weatherWallpaper, customWallpaper, themeMode, toggleTheme } from '../store'
+import {
+  selectedProjectId,
+  selectProject,
+  weatherWallpaper,
+  customWallpaper,
+  themeMode,
+  type ThemeMode,
+} from '../store'
 import { getProjects, deleteProject, updateProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
 import { refreshWeather, weatherError } from '../utils/weather'
@@ -20,6 +27,17 @@ const activeModule = ref('')
 let weatherTimer: ReturnType<typeof setInterval> | null = null
 
 const currentProject = computed(() => projects.value.find(p => p.id === selectedProjectId.value))
+const themeOptions: Array<{
+  value: ThemeMode
+  label: string
+  icon: 'sun' | 'moon' | 'system'
+}> = [
+  { value: 'light', label: '浅色', icon: 'sun' },
+  { value: 'dark', label: '深色', icon: 'moon' },
+  { value: 'system', label: '跟随系统', icon: 'system' },
+]
+const themeIcon = computed(() => themeOptions.find(option => option.value === themeMode.value)?.icon || 'system')
+const themeLabel = computed(() => themeOptions.find(option => option.value === themeMode.value)?.label || '跟随系统')
 
 async function loadProjects() {
   projects.value = await getProjects()
@@ -121,6 +139,11 @@ async function onWallpaperChange(e: Event) {
 
 function toggleModule(name: string) {
   activeModule.value = activeModule.value === name ? '' : name
+}
+
+function selectTheme(mode: ThemeMode) {
+  themeMode.value = mode
+  activeModule.value = ''
 }
 
 function onDocClick(e: MouseEvent) {
@@ -300,9 +323,40 @@ watch(showModal, async (visible) => {
 
       <!-- Theme -->
       <div class="menu-item-wrap">
-        <div class="sidebar-menu-item" @click="toggleTheme" :title="themeMode === 'dark' ? '切换到浅色' : '切换到深色'">
-          <span class="menu-icon"><SidebarIcon :name="themeMode === 'dark' ? 'sun' : 'moon'" /></span>
-          <span class="menu-label">{{ themeMode === 'dark' ? '浅色' : '深色' }}</span>
+        <button
+          type="button"
+          class="sidebar-menu-item"
+          :class="{ active: activeModule === 'theme' }"
+          :title="`当前主题：${themeLabel}`"
+          :aria-expanded="activeModule === 'theme'"
+          aria-haspopup="menu"
+          @click="toggleModule('theme')"
+        >
+          <span class="menu-icon"><SidebarIcon :name="themeIcon" /></span>
+          <span class="menu-label">主题</span>
+          <span class="theme-current">{{ themeLabel }}</span>
+        </button>
+        <div
+          v-if="activeModule === 'theme'"
+          class="sidebar-bubble theme-bubble"
+          role="radiogroup"
+          aria-label="主题模式"
+          @keydown.escape="activeModule = ''"
+        >
+          <button
+            v-for="option in themeOptions"
+            :key="option.value"
+            type="button"
+            class="theme-option"
+            :class="{ active: themeMode === option.value }"
+            role="radio"
+            :aria-checked="themeMode === option.value"
+            @click="selectTheme(option.value)"
+          >
+            <span class="theme-option-icon"><SidebarIcon :name="option.icon" /></span>
+            <span>{{ option.label }}</span>
+            <span class="theme-option-check" aria-hidden="true">✓</span>
+          </button>
         </div>
       </div>
 
@@ -419,8 +473,11 @@ watch(showModal, async (visible) => {
 .menu-item-wrap { position: relative; }
 
 .sidebar-menu-item {
+  width: 100%;
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  border: 0; background: transparent; color: inherit; font-family: inherit;
+  text-align: left; appearance: none;
   transition: all 0.2s;
 }
 .sidebar-menu-item:hover { background: rgba(0,0,0,0.04); }
@@ -439,6 +496,40 @@ watch(showModal, async (visible) => {
 .sidebar-menu-item.danger:hover .menu-icon { color: var(--color-danger); }
 .menu-label { font-size: 0.8rem; font-weight: 600; color: var(--color-ink-2); }
 .sidebar-menu-item.danger .menu-label { color: var(--color-danger); }
+.theme-current {
+  margin-left: auto;
+  color: var(--color-ink-3);
+  font-size: 0.62rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.theme-bubble { gap: 4px; }
+.theme-option {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-2);
+  cursor: pointer;
+  font: 600 0.72rem/1 var(--font-family);
+  text-align: left;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.theme-option:hover { background: color-mix(in srgb, var(--color-ink) 5%, transparent); color: var(--color-ink); }
+.theme-option.active {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+}
+.theme-option-icon { width: 18px; height: 18px; display: grid; place-items: center; }
+.theme-option-check { margin-left: auto; opacity: 0; color: var(--color-primary); font-size: 0.68rem; }
+.theme-option.active .theme-option-check { opacity: 1; }
 
 /* Bubble pops to the RIGHT */
 .sidebar-bubble {
