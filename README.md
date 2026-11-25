@@ -77,3 +77,17 @@ npm run dev
 - **布局**：`＋` 添加组件，拖拽 `⋮⋮` 移动，右键删除
 - **项目**：侧边栏展开 → 项目菜单 → 切换/新增（最多 3 个）
 - **数据**：导出/导入 JSON 备份，清除数据二次确认
+
+## 部署
+
+测试环境部署到 BaoTa 服务器，只允许发布 `test` 分支。首次配置、日常命令和
+故障排查见 [部署文档](deploy/README.md)。
+
+日常发布：
+
+```powershell
+git switch test
+git pull --ff-only
+npm run deploy:dry-run
+npm run deploy
+```
