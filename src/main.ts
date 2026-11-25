@@ -2,13 +2,15 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 
-// Apply saved theme before mount to avoid a light-mode flash
-if (localStorage.getItem('theme-mode') === 'dark') {
-  document.documentElement.classList.add('dark')
-}
-
 const app = createApp(App)
 app.mount('#app')
+
+requestAnimationFrame(() => {
+  const loader = document.getElementById('boot-loader')
+  if (!loader) return
+  loader.classList.add('is-hiding')
+  window.setTimeout(() => loader.remove(), 180)
+})
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
