@@ -16,6 +16,8 @@ Optional environment:
   DAKA_DEPLOY_USER       SSH user (default: root)
   DAKA_DEPLOY_PORT       SSH port (default: 22)
   DAKA_DEPLOY_SSH_KEY    Private key path; agent authentication is used if unset
+  DAKA_DEPLOY_USE_SUDO   Use non-interactive sudo for release activation (default: 0)
+  DAKA_DEPLOY_OWNER      Owner applied after activation (default with sudo: www:www)
   DAKA_DEPLOY_KEEP       Previous release copies retained (default: 3)
 EOF
 }
@@ -75,8 +77,21 @@ DEPLOY_PORT="${DAKA_DEPLOY_PORT:-22}"
 DEPLOY_PATH="${DAKA_DEPLOY_PATH:-/www/wwwroot/daka}"
 DEPLOY_HEALTH_URL="${DAKA_DEPLOY_HEALTH_URL:-http://106.55.36.254:23562/}"
 DEPLOY_SSH_KEY="${DAKA_DEPLOY_SSH_KEY:-}"
+DEPLOY_USE_SUDO="${DAKA_DEPLOY_USE_SUDO:-0}"
+DEPLOY_OWNER="${DAKA_DEPLOY_OWNER:-}"
 DEPLOY_KEEP="${DAKA_DEPLOY_KEEP:-3}"
 SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
+
+if [[ "$DEPLOY_USE_SUDO" != "0" && "$DEPLOY_USE_SUDO" != "1" ]]; then
+  echo "DAKA_DEPLOY_USE_SUDO must be 0 or 1." >&2
+  exit 2
+fi
+
+REMOTE_SUDO=""
+if [[ "$DEPLOY_USE_SUDO" == "1" ]]; then
+  REMOTE_SUDO="sudo -n"
+  DEPLOY_OWNER="${DEPLOY_OWNER:-www:www}"
+fi
 
 SSH_OPTS=(-p "$DEPLOY_PORT" -o StrictHostKeyChecking=yes -o ConnectTimeout=10)
 if [[ -n "$DEPLOY_SSH_KEY" ]]; then
@@ -100,27 +115,43 @@ REMOTE_BACKUP="${DEPLOY_PATH}.previous.${RELEASE_ID}"
 FINAL_UPLOAD=(ssh "${SSH_OPTS[@]}" "$SSH_TARGET")
 
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "[dry-run] ssh $SSH_TARGET mkdir -p $REMOTE_STAGE"
+  if [[ "$DEPLOY_USE_SUDO" == "1" ]]; then
+    echo "[dry-run] ssh $SSH_TARGET $REMOTE_SUDO install -d $REMOTE_STAGE"
+  else
+    echo "[dry-run] ssh $SSH_TARGET mkdir -p $REMOTE_STAGE"
+  fi
   echo "[dry-run] tar dist/ | ssh $SSH_TARGET tar -xzf - -C $REMOTE_STAGE"
-  echo "[dry-run] atomically replace $DEPLOY_PATH"
+  echo "[dry-run] ${REMOTE_SUDO:+$REMOTE_SUDO }atomically replace $DEPLOY_PATH"
+  if [[ -n "$DEPLOY_OWNER" ]]; then
+    echo "[dry-run] ${REMOTE_SUDO:+$REMOTE_SUDO }chown -R $DEPLOY_OWNER $DEPLOY_PATH"
+  fi
   echo "[dry-run] health check $DEPLOY_HEALTH_URL"
   exit 0
 fi
 
 echo "[3/5] Uploading release $RELEASE_ID"
-tar -C dist -czf - . | "${FINAL_UPLOAD[@]}" "mkdir -p '$REMOTE_STAGE' && tar -xzf - -C '$REMOTE_STAGE'"
+if [[ "$DEPLOY_USE_SUDO" == "1" ]]; then
+  ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
+    "sudo -n install -d -m 0775 -o \"\$(id -u)\" -g \"\$(id -g)\" '$REMOTE_STAGE'"
+else
+  ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "mkdir -p '$REMOTE_STAGE'"
+fi
+tar -C dist -czf - . | "${FINAL_UPLOAD[@]}" "tar -xzf - -C '$REMOTE_STAGE'"
 
 echo "[4/5] Activating release"
 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "
 set -Eeuo pipefail
 if [[ -d '$DEPLOY_PATH' ]]; then
-  mv '$DEPLOY_PATH' '$REMOTE_BACKUP'
+  $REMOTE_SUDO mv '$DEPLOY_PATH' '$REMOTE_BACKUP'
 fi
-if ! mv '$REMOTE_STAGE' '$DEPLOY_PATH'; then
-  mv '$REMOTE_BACKUP' '$DEPLOY_PATH'
+if ! $REMOTE_SUDO mv '$REMOTE_STAGE' '$DEPLOY_PATH'; then
+  $REMOTE_SUDO mv '$REMOTE_BACKUP' '$DEPLOY_PATH'
   exit 1
 fi
-find '$(dirname "$DEPLOY_PATH")' -maxdepth 1 -type d -name '$(basename "$DEPLOY_PATH").previous.*' | sort -r | tail -n +$((DEPLOY_KEEP + 1)) | xargs -r rm -rf
+if [[ -n '$DEPLOY_OWNER' ]]; then
+  $REMOTE_SUDO chown -R '$DEPLOY_OWNER' '$DEPLOY_PATH'
+fi
+find '$(dirname "$DEPLOY_PATH")' -maxdepth 1 -type d -name '$(basename "$DEPLOY_PATH").previous.*' | sort -r | tail -n +$((DEPLOY_KEEP + 1)) | xargs -r $REMOTE_SUDO rm -rf
 "
 
 echo "Deployed test commit $COMMIT_SHA"
