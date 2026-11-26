@@ -11,6 +11,7 @@ const WelcomeDialog = defineAsyncComponent(() => import('./components/WelcomeDia
 const showModal = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
 const editingProjectId = ref<number | null>(null)
+const showWelcome = ref(false)
 
 function openAddModal() {
   modalMode.value = 'add'
@@ -27,10 +28,11 @@ provide('modalMode', modalMode)
 provide('editingProjectId', editingProjectId)
 provide('openAddModal', openAddModal)
 provide('closeModal', closeModal)
+provide('openWelcomeGuide', () => {
+  showWelcome.value = true
+})
 
 // Welcome dialog
-const showWelcome = ref(false)
-
 onMounted(() => {
   if (!getItem('dake-welcomed')) {
     showWelcome.value = true

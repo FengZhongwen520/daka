@@ -3,6 +3,7 @@ import {
   ApiError,
   clearRecords,
   deleteRecord,
+  loadCurrentUser,
   loadRecords,
   login as loginRequest,
   logout as logoutRequest,
@@ -72,9 +73,12 @@ function readUser(): CloudUser | null {
   if (!raw) return null
   try {
     const user = JSON.parse(raw) as Partial<CloudUser>
-    return typeof user.id === 'string' && typeof user.loginId === 'string'
-      ? { id: user.id, loginId: user.loginId }
-      : null
+    if (typeof user.id !== 'string' || typeof user.loginId !== 'string') return null
+    return {
+      id: user.id,
+      loginId: user.loginId,
+      email: typeof user.email === 'string' ? user.email : null,
+    }
   } catch {
     return null
   }
@@ -137,7 +141,11 @@ export async function initializeStorage(): Promise<void> {
 
 async function hydrateCloud(): Promise<void> {
   if (!sessionToken) throw new ApiError('请先登录云端存储', 401)
-  const records = await loadRecords(sessionToken)
+  const [records, user] = await Promise.all([
+    loadRecords(sessionToken),
+    loadCurrentUser(sessionToken),
+  ])
+  setSession(sessionToken, user)
   cloudValues.clear()
   for (const record of records) cloudValues.set(record.key, record.value)
 }

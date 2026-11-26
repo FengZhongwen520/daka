@@ -86,6 +86,10 @@ export function login(loginId: string, password: string): Promise<AuthSession> {
   })
 }
 
+export function loadCurrentUser(token: string): Promise<CloudUser> {
+  return apiRequest<CloudUser>('/auth/me', {}, token)
+}
+
 export function logout(token: string): Promise<void> {
   return apiRequest<void>('/auth/logout', { method: 'POST' }, token)
 }

@@ -21,7 +21,7 @@ import { askConfirm, notify } from '../utils/feedback'
 import EmailBindingDialog from './EmailBindingDialog.vue'
 import PasswordResetDialog from './PasswordResetDialog.vue'
 import ProjectSyncDialog from './ProjectSyncDialog.vue'
-import { getItem, removeItem } from '../storage'
+import { getItem } from '../storage'
 import {
   cloudUser,
   loginCloud,
@@ -35,6 +35,7 @@ import {
 
 const openAddModal = inject<() => void>('openAddModal')!
 const showModal = inject<Ref<boolean>>('showModal')!
+const openWelcomeGuide = inject<() => void>('openWelcomeGuide')!
 const MAX_PROJECTS = 3
 
 const projects = ref<Project[]>([])
@@ -60,7 +61,6 @@ const themeOptions: Array<{
   { value: 'dark', label: '深色', icon: 'moon' },
   { value: 'system', label: '跟随系统', icon: 'system' },
 ]
-const themeIcon = computed(() => themeOptions.find(option => option.value === themeMode.value)?.icon || 'system')
 const themeLabel = computed(() => themeOptions.find(option => option.value === themeMode.value)?.label || '跟随系统')
 
 async function loadProjects() {
@@ -99,9 +99,9 @@ function onAddClick() {
   openAddModal()
 }
 
-function openWelcome() {
-  removeItem('dake-welcomed')
-  location.reload()
+function showWelcomeGuide() {
+  activeModule.value = ''
+  openWelcomeGuide()
 }
 
 async function onClearData() {
@@ -203,7 +203,6 @@ function toggleModule(name: string) {
 
 function selectTheme(mode: ThemeMode) {
   themeMode.value = mode
-  activeModule.value = ''
 }
 
 function onDocClick(e: MouseEvent) {
@@ -337,7 +336,7 @@ watch(showModal, async (visible) => {
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" :class="{ active: activeModule === 'storage' }" @click="toggleModule('storage')">
           <span class="menu-icon"><SidebarIcon name="storage" /></span>
-          <span class="menu-label">存储</span>
+          <span class="menu-label">存储&用户</span>
           <span class="theme-current">{{ storageMode === 'cloud' ? '云端' : '本地' }}</span>
         </div>
         <div v-if="activeModule === 'storage'" class="sidebar-bubble storage-bubble">
@@ -350,16 +349,35 @@ watch(showModal, async (visible) => {
           </div>
 
           <template v-if="cloudUser">
-            <p class="storage-account">已登录：{{ cloudUser.loginId }}</p>
-            <p class="storage-account">
-              邮箱：{{ cloudUser.email || '未绑定' }}
-            </p>
-            <button type="button" class="sidebar-text-btn storage-email-btn" @click="showEmailBinding = true">
-              {{ cloudUser.email ? '更换绑定邮箱' : '绑定邮箱' }}
-            </button>
-            <button type="button" class="sidebar-text-btn storage-email-btn" @click="showProjectSync = true">
-              项目同步
-            </button>
+            <div class="storage-account-card">
+              <div class="storage-account-row">
+                <span>账号</span>
+                <strong :title="cloudUser.loginId">{{ cloudUser.loginId }}</strong>
+              </div>
+              <div class="storage-account-row">
+                <span>邮箱</span>
+                <strong :class="{ 'is-empty': !cloudUser.email }" :title="cloudUser.email || '未绑定'">
+                  {{ cloudUser.email || '未绑定' }}
+                </strong>
+              </div>
+            </div>
+            <div class="storage-account-actions">
+              <button
+                type="button"
+                class="storage-account-action"
+                :title="cloudUser.email ? '更换绑定邮箱' : '绑定邮箱'"
+                @click="showEmailBinding = true"
+              >
+                {{ cloudUser.email ? '更换邮箱' : '绑定邮箱' }}
+              </button>
+              <button
+                type="button"
+                class="storage-account-action"
+                @click="showProjectSync = true"
+              >
+                项目同步
+              </button>
+            </div>
             <div class="storage-actions">
               <button
                 type="button"
@@ -404,106 +422,156 @@ watch(showModal, async (visible) => {
                 {{ storageBusy ? '处理中…' : authMode === 'register' ? '注册并启用云端' : '登录云端' }}
               </button>
             </form>
-            <button
-              type="button"
-              class="sidebar-text-btn storage-auth-switch"
-              @click="authMode = authMode === 'login' ? 'register' : 'login'; authError = ''"
-            >
-              {{ authMode === 'login' ? '没有账号？注册' : '已有账号？登录' }}
-            </button>
-            <button
-              v-if="authMode === 'login'"
-              type="button"
-              class="sidebar-text-btn storage-auth-switch"
-              @click="showPasswordReset = true"
-            >忘记密码</button>
+            <div class="storage-auth-links" :class="{ 'is-single': authMode !== 'login' }">
+              <button
+                type="button"
+                class="storage-link-btn"
+                @click="authMode = authMode === 'login' ? 'register' : 'login'; authError = ''"
+              >
+                {{ authMode === 'login' ? '没有账号？注册' : '已有账号？登录' }}
+              </button>
+              <button
+                v-if="authMode === 'login'"
+                type="button"
+                class="storage-link-btn"
+                @click="showPasswordReset = true"
+              >
+                忘记密码
+              </button>
+            </div>
           </template>
 
           <p v-if="authError || storageError" class="storage-error">{{ authError || storageError }}</p>
         </div>
       </div>
 
-      <!-- Wallpaper -->
+      <!-- Personalization -->
       <div class="menu-item-wrap">
-        <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
-          <span class="menu-icon"><SidebarIcon name="wallpaper" /></span>
-          <span class="menu-label">壁纸</span>
-        </div>
-        <div v-if="activeModule === 'wallpaper'" class="sidebar-bubble">
-          <div class="bubble-row">
-            <span class="bubble-label">天气壁纸</span>
-            <button
-              type="button"
-              class="ui-switch"
-              role="switch"
-              :aria-checked="weatherWallpaper"
-              aria-label="天气壁纸"
-              @click="toggleWeatherWallpaper"
-            />
-          </div>
-          <div class="bubble-row">
-            <span class="bubble-label">自定义壁纸</span>
-            <button type="button" class="ui-button ui-button-small" @click="triggerWallpaper">上传图片</button>
-          </div>
-          <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
-          <button v-if="customWallpaper" class="sidebar-text-btn" @click="customWallpaper = ''">清除自定义壁纸</button>
-        </div>
-      </div>
-
-      <!-- Layout -->
-      <div class="menu-item-wrap">
-        <div
+        <button
+          type="button"
           class="sidebar-menu-item"
-          :class="{ active: activeModule === 'layout' }"
-          @click="toggleModule('layout')"
+          :class="{ active: activeModule === 'personalize' }"
+          :aria-expanded="activeModule === 'personalize'"
+          aria-haspopup="dialog"
+          @click="toggleModule('personalize')"
         >
           <span class="menu-icon"><SidebarIcon name="layout" /></span>
-          <span class="menu-label">布局</span>
-        </div>
-        <div v-if="activeModule === 'layout'" class="sidebar-bubble layout-bubble">
-          <button
-            type="button"
-            class="ui-button ui-button-small btn-block"
-            @click="requestLayoutArrangement(); activeModule = ''"
-          >
-            自动整理布局
-          </button>
-          <div class="bubble-row">
-            <span class="bubble-label">吸附 8px 网格</span>
+          <span class="menu-label">个性化</span>
+          <span class="theme-current">{{ themeLabel }}</span>
+        </button>
+        <div
+          v-if="activeModule === 'personalize'"
+          class="sidebar-bubble personalize-bubble"
+          role="dialog"
+          aria-label="个性化设置"
+          @keydown.escape="activeModule = ''"
+        >
+          <div class="personalize-intro">
+            <strong>外观与布局</strong>
+            <small>让工作台适合今天的状态。</small>
+          </div>
+
+          <section class="personalize-section">
+            <div class="personalize-section-title">壁纸</div>
+            <div class="personalize-row">
+              <span>
+                <strong>天气壁纸</strong>
+                <small>随深圳天气变化</small>
+              </span>
+              <button
+                type="button"
+                class="ui-switch"
+                role="switch"
+                :aria-checked="weatherWallpaper"
+                aria-label="天气壁纸"
+                @click="toggleWeatherWallpaper"
+              />
+            </div>
+            <div class="personalize-row">
+              <span>
+                <strong>自定义壁纸</strong>
+                <small>使用自己的图片</small>
+              </span>
+              <button type="button" class="ui-button ui-button-small" @click="triggerWallpaper">上传图片</button>
+            </div>
+            <input ref="wallpaperInput" type="file" accept="image/*" style="display:none" @change="onWallpaperChange" />
+            <button v-if="customWallpaper" type="button" class="personalize-reset" @click="customWallpaper = ''">
+              清除自定义壁纸
+            </button>
+          </section>
+
+          <section class="personalize-section">
+            <div class="personalize-section-title">布局</div>
             <button
               type="button"
-              class="ui-switch"
-              role="switch"
-              :aria-checked="snapToGrid"
-              aria-label="吸附网格"
-              @click="snapToGrid = !snapToGrid"
-            />
-          </div>
-          <div class="bubble-row">
-            <span class="bubble-label">显示布局网格</span>
-            <button
-              type="button"
-              class="ui-switch"
-              role="switch"
-              :aria-checked="showLayoutGrid"
-              aria-label="显示布局网格"
-              @click="showLayoutGrid = !showLayoutGrid"
-            />
-          </div>
-          <label class="glass-opacity-control">
-            <span>
-              <span>玻璃不透明度</span>
-              <strong>{{ Math.round(glassOpacity * 100) }}%</strong>
-            </span>
-            <input
-              v-model.number="glassOpacity"
-              type="range"
-              min="0.24"
-              max="0.8"
-              step="0.02"
-              aria-label="玻璃不透明度"
-            />
-          </label>
+              class="ui-button ui-button-small btn-block"
+              @click="requestLayoutArrangement(); activeModule = ''"
+            >
+              自动整理当前项目
+            </button>
+            <div class="personalize-row">
+              <span>
+                <strong>网格吸附</strong>
+                <small>移动时对齐 8px 网格</small>
+              </span>
+              <button
+                type="button"
+                class="ui-switch"
+                role="switch"
+                :aria-checked="snapToGrid"
+                aria-label="吸附网格"
+                @click="snapToGrid = !snapToGrid"
+              />
+            </div>
+            <div class="personalize-row">
+              <span>
+                <strong>显示网格</strong>
+                <small>辅助摆放组件</small>
+              </span>
+              <button
+                type="button"
+                class="ui-switch"
+                role="switch"
+                :aria-checked="showLayoutGrid"
+                aria-label="显示布局网格"
+                @click="showLayoutGrid = !showLayoutGrid"
+              />
+            </div>
+            <label class="glass-opacity-control">
+              <span>
+                <span>玻璃不透明度</span>
+                <strong>{{ Math.round(glassOpacity * 100) }}%</strong>
+              </span>
+              <input
+                v-model.number="glassOpacity"
+                type="range"
+                min="0.24"
+                max="0.8"
+                step="0.02"
+                aria-label="玻璃不透明度"
+              />
+            </label>
+          </section>
+
+          <section class="personalize-section">
+            <div class="personalize-section-title">主题</div>
+            <div class="theme-option-grid" role="radiogroup" aria-label="主题模式">
+              <button
+                v-for="option in themeOptions"
+                :key="option.value"
+                type="button"
+                class="theme-option"
+                :class="{ active: themeMode === option.value }"
+                role="radio"
+                :aria-checked="themeMode === option.value"
+                @click="selectTheme(option.value)"
+              >
+                <span class="theme-option-icon"><SidebarIcon :name="option.icon" /></span>
+                <span>{{ option.label }}</span>
+                <span class="theme-option-check" aria-hidden="true">✓</span>
+              </button>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -513,61 +581,46 @@ watch(showModal, async (visible) => {
           <span class="menu-icon"><SidebarIcon name="help" /></span>
           <span class="menu-label">帮助</span>
         </div>
-        <div v-if="activeModule === 'help'" class="sidebar-bubble">
-          <p class="bubble-title">页巢</p>
-          <p class="bubble-desc">浏览器导航页，你的个人工作台。</p>
-          <p class="bubble-ver">v2.0 拖拽组件、多项目<br>v1.5 天气、白噪音、番茄钟<br>v1.0 基础打卡、导入导出</p>
-          <button type="button" class="ui-button ui-button-small btn-block" @click="openWelcome">重新查看引导</button>
+        <div v-if="activeModule === 'help'" class="sidebar-bubble help-bubble">
+          <p class="help-kicker">使用指南</p>
+          <p class="help-title">先从四件事开始</p>
+          <p class="help-desc">页巢把搜索、收藏、专注、资讯和个人数据收进同一张桌面。</p>
+          <ol class="help-quick-list">
+            <li>
+              <span>01</span>
+              <div><strong>搭建桌面</strong><small>点右上角 ＋ 添加组件，拖动顶部移动、拖动边缘缩放。</small></div>
+            </li>
+            <li>
+              <span>02</span>
+              <div><strong>调整外观</strong><small>在“个性化”统一设置壁纸、网格、玻璃质感和主题。</small></div>
+            </li>
+            <li>
+              <span>03</span>
+              <div><strong>建立私人信息流</strong><small>资讯雷达可组合专题、媒体源和隐私模式，离开页面自动隐藏。</small></div>
+            </li>
+            <li>
+              <span>04</span>
+              <div><strong>选择数据归属</strong><small>本地留在当前浏览器；云端登录后加密保存，并可绑定邮箱恢复密码。</small></div>
+            </li>
+          </ol>
+          <div class="help-note">日记会在失去焦点或切页时自动进入隐私模式。</div>
+          <button type="button" class="ui-button ui-button-primary ui-button-small btn-block" @click="showWelcomeGuide">
+            打开完整使用指南
+          </button>
         </div>
       </div>
 
       <!-- Clear -->
       <div class="menu-item-wrap">
-        <div class="sidebar-menu-item danger" :class="{ active: activeModule === 'clear' }" @click="toggleModule('clear')">
+        <div class="sidebar-menu-item clear-menu-item" :class="{ active: activeModule === 'clear' }" @click="toggleModule('clear')">
           <span class="menu-icon"><SidebarIcon name="trash" /></span>
           <span class="menu-label">清除</span>
         </div>
-        <div v-if="activeModule === 'clear'" class="sidebar-bubble">
-          <p class="bubble-warn">清除当前项目全部数据</p>
-          <button type="button" class="ui-button ui-button-small btn-block ui-button-danger" @click="onClearData">确认清除</button>
-        </div>
-      </div>
-
-      <!-- Theme -->
-      <div class="menu-item-wrap">
-        <button
-          type="button"
-          class="sidebar-menu-item"
-          :class="{ active: activeModule === 'theme' }"
-          :title="`当前主题：${themeLabel}`"
-          :aria-expanded="activeModule === 'theme'"
-          aria-haspopup="menu"
-          @click="toggleModule('theme')"
-        >
-          <span class="menu-icon"><SidebarIcon :name="themeIcon" /></span>
-          <span class="menu-label">主题</span>
-          <span class="theme-current">{{ themeLabel }}</span>
-        </button>
-        <div
-          v-if="activeModule === 'theme'"
-          class="sidebar-bubble theme-bubble"
-          role="radiogroup"
-          aria-label="主题模式"
-          @keydown.escape="activeModule = ''"
-        >
-          <button
-            v-for="option in themeOptions"
-            :key="option.value"
-            type="button"
-            class="theme-option"
-            :class="{ active: themeMode === option.value }"
-            role="radio"
-            :aria-checked="themeMode === option.value"
-            @click="selectTheme(option.value)"
-          >
-            <span class="theme-option-icon"><SidebarIcon :name="option.icon" /></span>
-            <span>{{ option.label }}</span>
-            <span class="theme-option-check" aria-hidden="true">✓</span>
+        <div v-if="activeModule === 'clear'" class="sidebar-bubble clear-bubble">
+          <p class="clear-title">清理当前项目</p>
+          <p class="clear-copy">只清除当前存储模式下的项目数据。此操作不可恢复，建议先导出备份。</p>
+          <button type="button" class="ui-button ui-button-small btn-block" @click="onClearData">
+            查看清除选项
           </button>
         </div>
       </div>
@@ -589,7 +642,7 @@ watch(showModal, async (visible) => {
 
 <style scoped>
 .storage-bubble {
-  min-width: 236px;
+  width: 248px;
 }
 .storage-mode-row {
   display: flex;
@@ -609,7 +662,6 @@ watch(showModal, async (visible) => {
   font-size: 0.74rem;
 }
 .storage-mode-row small,
-.storage-account,
 .storage-note {
   color: var(--color-ink-3);
   font-size: 0.62rem;
@@ -626,12 +678,66 @@ watch(showModal, async (visible) => {
   background: var(--color-primary);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
 }
-.storage-account {
-  margin: 9px 0 7px;
+.storage-account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 9px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-ink) 2.5%, transparent);
+}
+.storage-account-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+.storage-account-row > span {
+  color: var(--color-ink-3);
+}
+.storage-account-row > strong {
+  min-width: 0;
   overflow: hidden;
   color: var(--color-ink-2);
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.storage-account-row > strong.is-empty {
+  color: var(--color-ink-3);
+  font-weight: 500;
+}
+.storage-account-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 7px;
+}
+.storage-account-action {
+  min-height: 29px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface-soft);
+  color: var(--color-ink-2);
+  cursor: pointer;
+  font: 600 0.67rem/1 var(--font-family);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.storage-account-action:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 36%, var(--color-border));
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+}
+.storage-account-action:focus-visible,
+.storage-link-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  outline-offset: 2px;
 }
 .storage-actions {
   display: grid;
@@ -640,10 +746,6 @@ watch(showModal, async (visible) => {
 }
 .storage-note {
   margin: 9px 0;
-}
-.storage-email-btn {
-  display: block;
-  margin: -2px 0 8px auto;
 }
 .storage-auth-form {
   display: flex;
@@ -654,9 +756,33 @@ watch(showModal, async (visible) => {
   height: 30px;
   font-size: 0.68rem;
 }
-.storage-auth-switch {
-  display: block;
-  margin: 8px auto 0;
+.storage-auth-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  padding: 0 2px;
+}
+.storage-auth-links.is-single {
+  justify-content: center;
+}
+.storage-link-btn {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 500 0.66rem/1.4 var(--font-family);
+  text-align: center;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 34%, transparent);
+  text-underline-offset: 3px;
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+}
+.storage-link-btn:hover {
+  color: var(--color-primary-hover);
+  text-decoration-color: currentColor;
 }
 .storage-error {
   margin-top: 8px;
@@ -797,10 +923,10 @@ watch(showModal, async (visible) => {
 }
 .sidebar-menu-item:hover .menu-icon,
 .sidebar-menu-item.active .menu-icon { color: var(--color-primary); }
-.sidebar-menu-item.danger .menu-icon,
-.sidebar-menu-item.danger:hover .menu-icon { color: var(--color-danger); }
 .menu-label { font-size: 0.8rem; font-weight: 600; color: var(--color-ink-2); }
-.sidebar-menu-item.danger .menu-label { color: var(--color-danger); }
+.clear-menu-item .menu-icon { color: var(--color-ink-3); }
+.clear-menu-item:hover .menu-icon { color: var(--color-ink-2); }
+.clear-menu-item .menu-label { color: var(--color-ink-2); }
 .theme-current {
   margin-left: auto;
   color: var(--color-ink-3);
@@ -809,31 +935,43 @@ watch(showModal, async (visible) => {
   white-space: nowrap;
 }
 
-.theme-bubble { gap: 4px; }
+.theme-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
 .theme-option {
   width: 100%;
-  min-height: 34px;
+  min-height: 58px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 0 9px;
-  border: 1px solid transparent;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 4px;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: transparent;
+  background: var(--color-surface-soft);
   color: var(--color-ink-2);
   cursor: pointer;
-  font: 600 0.72rem/1 var(--font-family);
-  text-align: left;
+  font: 600 0.66rem/1.2 var(--font-family);
+  text-align: center;
   transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
-.theme-option:hover { background: color-mix(in srgb, var(--color-ink) 5%, transparent); color: var(--color-ink); }
+.theme-option:hover { border-color: var(--color-ink-3); color: var(--color-ink); }
 .theme-option.active {
   border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
   background: var(--color-primary-soft);
   color: var(--color-primary-hover);
 }
 .theme-option-icon { width: 18px; height: 18px; display: grid; place-items: center; }
-.theme-option-check { margin-left: auto; opacity: 0; color: var(--color-primary); font-size: 0.68rem; }
+.theme-option-check {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
 .theme-option.active .theme-option-check { opacity: 1; }
 
 /* Bubble pops to the RIGHT */
@@ -844,10 +982,79 @@ watch(showModal, async (visible) => {
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-pop);
   z-index: 100; display: flex; flex-direction: column; gap: 6px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
 }
 .bubble-row { display: flex; gap: 4px; align-items: center; justify-content: space-between; }
 .bubble-label { font-size: 0.72rem; color: var(--color-ink-2); }
-.layout-bubble { gap: 8px; }
+.personalize-bubble {
+  width: 278px;
+  gap: 13px;
+  padding: 14px;
+}
+.personalize-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--color-border);
+}
+.personalize-intro strong {
+  color: var(--color-ink);
+  font-size: 0.78rem;
+}
+.personalize-intro small,
+.personalize-row small {
+  color: var(--color-ink-3);
+  font-size: 0.61rem;
+  line-height: 1.4;
+}
+.personalize-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.personalize-section + .personalize-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+.personalize-section-title {
+  color: var(--color-ink-3);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+}
+.personalize-row {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.personalize-row > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.personalize-row strong {
+  color: var(--color-ink-2);
+  font-size: 0.69rem;
+  font-weight: 620;
+}
+.personalize-reset {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 500 0.62rem/1.5 var(--font-family);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+.personalize-reset:hover { color: var(--color-primary-hover); }
 .glass-opacity-control {
   display: flex;
   flex-direction: column;
@@ -904,13 +1111,87 @@ watch(showModal, async (visible) => {
 .bubble-title { font-size: 0.8rem; font-weight: 700; color: var(--color-ink); margin-bottom: 2px; }
 .bubble-desc { font-size: 0.7rem; color: var(--color-ink-3); margin-bottom: 4px; }
 .bubble-ver { font-size: 0.65rem; color: var(--color-ink-3); line-height: 1.5; }
-.bubble-warn { font-size: 0.72rem; color: var(--color-danger); text-align: center; }
 
-.help-content { font-size: 0.85rem; color: var(--color-ink-2); line-height: 1.6; }
-.help-content h3 { font-size: 1.2rem; margin-bottom: 4px; }
-.help-content h4 { margin: 10px 0 4px; font-size: 0.9rem; }
-.help-content ul { padding-left: 18px; }
-.help-content li { margin-bottom: 2px; }
+.help-bubble {
+  width: 304px;
+  gap: 10px;
+  padding: 14px;
+}
+.help-kicker {
+  color: var(--color-primary-hover);
+  font-size: 0.57rem;
+  font-weight: 740;
+  letter-spacing: 0.09em;
+}
+.help-title {
+  color: var(--color-ink);
+  font-size: 0.86rem;
+  font-weight: 720;
+  line-height: 1.3;
+}
+.help-desc {
+  color: var(--color-ink-3);
+  font-size: 0.64rem;
+  line-height: 1.55;
+}
+.help-quick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 3px 0;
+  list-style: none;
+}
+.help-quick-list li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 0;
+}
+.help-quick-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+}
+.help-quick-list li > span {
+  padding-top: 1px;
+  color: var(--color-primary-hover);
+  font: 700 0.57rem/1.2 var(--font-mono);
+}
+.help-quick-list div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.help-quick-list strong {
+  color: var(--color-ink-2);
+  font-size: 0.67rem;
+}
+.help-quick-list small {
+  color: var(--color-ink-3);
+  font-size: 0.61rem;
+  line-height: 1.5;
+}
+.help-note {
+  padding: 8px 9px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-primary) 7%, transparent);
+  color: var(--color-ink-2);
+  font-size: 0.61rem;
+  line-height: 1.45;
+}
+
+.clear-bubble {
+  width: 240px;
+  gap: 8px;
+}
+.clear-title {
+  color: var(--color-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.clear-copy {
+  color: var(--color-ink-3);
+  font-size: 0.63rem;
+  line-height: 1.55;
+}
 
 /* === Dark mode overrides === */
 html.dark .sidebar-menu-item:hover { background: rgba(255,255,255,0.06); }
