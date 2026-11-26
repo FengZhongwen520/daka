@@ -74,6 +74,8 @@ npm run test:all
 - `DAKA_CORS_ORIGINS`：允许访问 API 的前端来源，逗号分隔。
 - `DAKA_SMTP_HOST`、`DAKA_SMTP_PORT`、`DAKA_SMTP_USERNAME`、
   `DAKA_SMTP_PASSWORD`、`DAKA_MAIL_FROM`：邮箱验证码发信配置。
+- 465 端口通常配置 `DAKA_SMTP_SSL_ENABLE=true`、
+  `DAKA_SMTP_STARTTLS=false`；587 端口通常使用 STARTTLS。
 
 密钥不得提交到仓库。生产环境应使用独立、受备份保护的密钥管理系统，并在发布前验证数据库备份和恢复流程。
 

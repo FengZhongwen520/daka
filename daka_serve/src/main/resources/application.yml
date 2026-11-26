@@ -30,6 +30,8 @@ spring:
           starttls:
             enable: ${DAKA_SMTP_STARTTLS:true}
             required: ${DAKA_SMTP_STARTTLS:true}
+          ssl:
+            enable: ${DAKA_SMTP_SSL_ENABLE:false}
 
 server:
   port: ${DAKA_SERVER_PORT:8080}
