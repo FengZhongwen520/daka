@@ -5,7 +5,7 @@ usage() {
   cat <<'EOF'
 Usage: deploy/deploy.sh --env test [--dry-run] [--help]
 
-Builds the static Daka app and publishes it to the BaoTa site directory over SSH.
+Builds the static Yechao app and publishes it to the BaoTa site directory over SSH.
 
 Required environment:
   DAKA_DEPLOY_HOST       SSH host or configured SSH alias

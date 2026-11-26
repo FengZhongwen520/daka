@@ -1,5 +1,13 @@
-const CACHE_NAME = 'daka-shell-v1'
-const APP_SHELL = ['./', './index.html', './favicon.svg', './daka.png', './manifest.webmanifest']
+const CACHE_NAME = 'yechao-shell-v2'
+const APP_SHELL = [
+  './',
+  './index.html',
+  './yechao-32.png',
+  './yechao-180.png',
+  './yechao-192.png',
+  './yechao-512.png',
+  './manifest.webmanifest',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

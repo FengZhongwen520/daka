@@ -2,11 +2,12 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✊</text></svg>" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./yechao-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./yechao-180.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <meta name="theme-color" content="#2DD4A8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>daka - 新标签页</title>
+    <title>页巢 - 新标签页</title>
     <script>
       try {
         var storedTheme = localStorage.getItem('theme-mode')
@@ -57,38 +58,19 @@
         line-height: 1;
       }
       .boot-mark {
-        width: 42px;
-        height: 42px;
+        width: 46px;
+        height: 46px;
         display: grid;
         place-items: center;
-        border: 1px solid rgba(45, 212, 168, 0.28);
-        border-radius: 13px;
-        background:
-          linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 64%),
-          rgba(45, 212, 168, 0.1);
-        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12), 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+        filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.16));
       }
-      html.dark .boot-mark {
-        background:
-          linear-gradient(145deg, rgba(255, 255, 255, 0.09), transparent 64%),
-          rgba(45, 212, 168, 0.12);
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
-      }
-      .boot-mark svg { width: 27px; height: 27px; }
-      .boot-page { fill: rgba(255, 255, 255, 0.72); stroke: #596071; stroke-width: 1.2; }
-      html.dark .boot-page { fill: rgba(255, 255, 255, 0.06); stroke: rgba(255, 255, 255, 0.44); }
-      .boot-fold { fill: none; stroke: #8A93A3; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
-      .boot-check { fill: none; stroke: #1FB99A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .boot-mark img { width: 100%; height: 100%; display: block; object-fit: contain; }
       .boot-copy { display: flex; flex-direction: column; gap: 4px; }
       .boot-word {
         font-size: 1.5rem;
         font-weight: 790;
-        letter-spacing: -0.065em;
+        letter-spacing: -0.02em;
         line-height: 0.86;
-      }
-      .boot-dot {
-        color: #2DD4A8;
-        margin-left: 1px;
       }
       .boot-tagline {
         color: #9CA3AF;
@@ -144,18 +126,14 @@
   </head>
   <body>
     <div id="app"></div>
-    <div id="boot-loader" class="boot-loader" role="status" aria-label="正在打开 Dake">
+    <div id="boot-loader" class="boot-loader" role="status" aria-label="正在打开页巢">
       <div class="boot-brand">
         <span class="boot-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32">
-            <path class="boot-page" d="M8.5 6.5h10.1l4.9 4.9v14.1H8.5z" />
-            <path class="boot-fold" d="M18.6 6.5v4.9h4.9" />
-            <path class="boot-check" d="m12.6 18.1 2.7 2.7 5.2-6" />
-          </svg>
+          <img src="./yechao-icon.png" alt="" />
         </span>
         <span class="boot-copy">
-          <span class="boot-word">daka<span class="boot-dot">.</span></span>
-          <span class="boot-tagline">DAILY DESK</span>
+          <span class="boot-word">页巢</span>
+          <span class="boot-tagline">PAGE NEST</span>
         </span>
       </div>
       <span class="boot-line" aria-hidden="true"></span>

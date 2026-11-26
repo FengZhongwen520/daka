@@ -17,14 +17,14 @@ function close() {
 <template>
   <UiDialog
     :model-value="modelValue"
-    title="👋 欢迎使用 Dake 哒咔"
+    title="👋 欢迎使用 页巢"
     width="560px"
     :close-on-click-modal="false"
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="welcome-body">
       <div v-show="welcomeStep === 0" class="welcome-page">
-        <p class="welcome-intro">Dake 是你的<strong>浏览器导航页</strong>和<strong>个人工作台</strong>。</p>
+        <p class="welcome-intro">页巢是你的<strong>浏览器导航页</strong>和<strong>个人工作台</strong>。</p>
         <h4>🔎 搜索引擎</h4>
         <p>内置多引擎搜索，直接在桌面搜索，快速便捷。</p>
         <h4>🔒 数据安全</h4>

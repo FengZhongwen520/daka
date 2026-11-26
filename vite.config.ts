@@ -23,7 +23,7 @@ function precompressPlugin(): Plugin {
   }
 
   return {
-    name: 'daka-precompress',
+    name: 'yechao-precompress',
     apply: 'build',
     closeBundle() {
       walk(resolve('dist'))

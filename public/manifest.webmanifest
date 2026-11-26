@@ -1,6 +1,6 @@
 {
-  "name": "Dake 哒咔",
-  "short_name": "Dake",
+  "name": "页巢",
+  "short_name": "页巢",
   "description": "浏览器导航页和个人工作台",
   "start_url": "./",
   "scope": "./",
@@ -9,9 +9,15 @@
   "theme_color": "#2DD4A8",
   "icons": [
     {
-      "src": "./daka.png",
-      "sizes": "192x192 512x512",
+      "src": "./yechao-192.png",
+      "sizes": "192x192",
       "type": "image/png"
+    },
+    {
+      "src": "./yechao-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
