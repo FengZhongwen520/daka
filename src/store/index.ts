@@ -16,6 +16,18 @@ export interface WeatherData {
   humidity: number
   windSpeed: number
   location: string
+  hourly?: Array<{
+    time: string
+    temp: number
+    code: number
+    precipitation: number
+  }>
+  daily?: Array<{
+    date: string
+    minTemp: number
+    maxTemp: number
+    code: number
+  }>
 }
 export const weatherData = ref<WeatherData | null>(null)
 export const weatherLocationSource = ref<'manual' | 'geolocation' | 'timezone' | null>(null)
@@ -28,6 +40,46 @@ export const customWallpaper = ref('')
 watch(weatherWallpaper, (v) => {
   localStorage.setItem('weather-wallpaper', String(v))
 })
+
+function readBoolean(key: string, fallback: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored === 'true') return true
+    if (stored === 'false') return false
+  } catch {
+    // Storage can be unavailable in restrictive browser modes.
+  }
+  return fallback
+}
+
+function readGlassOpacity(): number {
+  try {
+    const raw = localStorage.getItem('daka-glass-opacity')
+    if (raw == null) return 0.42
+    const stored = Number(raw)
+    if (Number.isFinite(stored)) return Math.min(0.8, Math.max(0.24, stored))
+  } catch {
+    // Storage can be unavailable in restrictive browser modes.
+  }
+  return 0.42
+}
+
+// Layout preferences
+export const snapToGrid = ref(readBoolean('daka-snap-to-grid', true))
+export const showLayoutGrid = ref(readBoolean('daka-show-layout-grid', false))
+export const glassOpacity = ref(readGlassOpacity())
+export const layoutArrangementRequest = ref(0)
+
+watch(snapToGrid, value => localStorage.setItem('daka-snap-to-grid', String(value)))
+watch(showLayoutGrid, value => localStorage.setItem('daka-show-layout-grid', String(value)))
+watch(glassOpacity, (value) => {
+  localStorage.setItem('daka-glass-opacity', String(value))
+  document.documentElement.style.setProperty('--widget-glass-alpha', String(value))
+}, { immediate: true })
+
+export function requestLayoutArrangement() {
+  layoutArrangementRequest.value += 1
+}
 
 // Theme (light / dark / system)
 export type ThemeMode = 'light' | 'dark' | 'system'

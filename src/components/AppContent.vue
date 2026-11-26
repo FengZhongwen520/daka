@@ -1,7 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue'
-import { selectedProjectId, weatherData, weatherWallpaper, customWallpaper } from '../store/index.ts'
-import { getWidgets, addWidget, removeWidget, getWallpaper, saveWallpaper } from '../db/index.ts'
+import {
+  selectedProjectId,
+  weatherData,
+  weatherWallpaper,
+  customWallpaper,
+  showLayoutGrid,
+  layoutArrangementRequest,
+} from '../store/index.ts'
+import {
+  getWidgets,
+  addWidget,
+  removeWidget,
+  getWallpaper,
+  saveWallpaper,
+  updateWidgetZ,
+  updateWidgetsLayout,
+} from '../db/index.ts'
 import { WIDGETS } from './content_component/registry.ts'
 import type { WidgetInstance } from '../db/index.ts'
 import WidgetWrapper from './content_component/WidgetWrapper.vue'
@@ -32,6 +47,15 @@ const widgetMap: Record<string, any> = {
 // Widget instances
 const widgets = ref<WidgetInstance[]>([])
 const loading = ref(true) // 初始加载中，显示欢迎语
+const activeWidgetId = ref<number | null>(null)
+const overlappingWidgetIds = ref<Set<number>>(new Set())
+const layoutVersion = ref(0)
+let collisionFrame = 0
+let widgetResizeObserver: ResizeObserver | null = null
+const observedWidgets = new WeakSet<Element>()
+
+const topZIndex = computed(() => Math.max(0, ...widgets.value.map(widget => widget.zIndex ?? 0)))
+const collisionCount = computed(() => overlappingWidgetIds.value.size)
 
 function getCacheKey() { return `widgets-cache-${selectedProjectId.value}` }
 
@@ -48,9 +72,16 @@ async function initWidgets() {
   }
 
   const fresh = await getWidgets(selectedProjectId.value)
-  widgets.value = fresh
-  localStorage.setItem(getCacheKey(), JSON.stringify(fresh))
+  widgets.value = fresh.map((widget, index) => ({
+    ...widget,
+    zIndex: Number.isInteger(widget.zIndex) ? widget.zIndex! : index + 1,
+  }))
+  activeWidgetId.value = [...widgets.value].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))[0]?.id ?? null
+  localStorage.setItem(getCacheKey(), JSON.stringify(widgets.value))
   loading.value = false
+  await nextTick()
+  observeWidgetSizes()
+  scheduleCollisionCheck()
 }
 
 function updateWidgetCache() {
@@ -78,14 +109,118 @@ async function onAddWidget(type: string) {
   if (!widgetMap[type] || !selectedProjectId.value) return
   const pos = getNewWidgetPos()
   const id = await addWidget(type, pos.x, pos.y, selectedProjectId.value)
-  widgets.value.push({ id, type, x: pos.x, y: pos.y, projectId: selectedProjectId.value })
+  const zIndex = topZIndex.value + 1
+  widgets.value.push({ id, type, x: pos.x, y: pos.y, projectId: selectedProjectId.value, zIndex })
+  activeWidgetId.value = id
+  await updateWidgetZ(id, zIndex)
   updateWidgetCache()
+  await nextTick()
+  observeWidgetSizes()
+  scheduleCollisionCheck()
 }
 
 async function onRemoveWidget(id: number) {
   await removeWidget(id)
   widgets.value = widgets.value.filter(w => w.id !== id)
+  overlappingWidgetIds.value.delete(id)
+  if (activeWidgetId.value === id) activeWidgetId.value = null
   updateWidgetCache()
+  await nextTick()
+  scheduleCollisionCheck()
+}
+
+function bringWidgetToFront(id: number) {
+  activeWidgetId.value = id
+  const widget = widgets.value.find(item => item.id === id)
+  if (!widget) return
+  const nextZ = topZIndex.value + 1
+  if ((widget.zIndex ?? 0) === topZIndex.value) return
+  widget.zIndex = nextZ
+  void updateWidgetZ(id, nextZ)
+  updateWidgetCache()
+}
+
+function observeWidgetSizes() {
+  const scene = sceneRef.value
+  if (!scene || !widgetResizeObserver) return
+  scene.querySelectorAll<HTMLElement>('.widget-wrapper > *').forEach((element) => {
+    if (observedWidgets.has(element)) return
+    observedWidgets.add(element)
+    widgetResizeObserver?.observe(element)
+  })
+}
+
+function scheduleCollisionCheck() {
+  if (collisionFrame) cancelAnimationFrame(collisionFrame)
+  collisionFrame = requestAnimationFrame(() => {
+    collisionFrame = 0
+    detectWidgetOverlaps()
+  })
+}
+
+function detectWidgetOverlaps() {
+  const scene = sceneRef.value
+  if (!scene) return
+  const boxes = Array.from(scene.querySelectorAll<HTMLElement>('.widget-wrapper'))
+    .map((wrapper) => {
+      const element = wrapper.firstElementChild as HTMLElement | null
+      const id = Number(wrapper.dataset.widgetId)
+      if (!element || !Number.isInteger(id)) return null
+      const rect = element.getBoundingClientRect()
+      if (rect.width < 20 || rect.height < 20) return null
+      return { id, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
+    })
+    .filter((box): box is NonNullable<typeof box> => box != null)
+
+  const next = new Set<number>()
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      const a = boxes[i]
+      const b = boxes[j]
+      const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+      const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      if (overlapX > 8 && overlapY > 8) {
+        next.add(a.id)
+        next.add(b.id)
+      }
+    }
+  }
+  overlappingWidgetIds.value = next
+}
+
+async function autoArrangeWidgets() {
+  const scene = sceneRef.value
+  if (!scene || widgets.value.length === 0) return
+  const padding = 28
+  const gap = 18
+  const availableWidth = Math.max(280, scene.clientWidth - padding * 2)
+  const columns = availableWidth >= 1160 ? 3 : availableWidth >= 720 ? 2 : 1
+  const columnWidth = (availableWidth - gap * (columns - 1)) / columns
+  const columnBottoms = Array.from({ length: columns }, () => padding)
+
+  const arranged = widgets.value.map((widget) => {
+    const element = scene.querySelector<HTMLElement>(
+      `.widget-wrapper[data-widget-id="${widget.id}"] > *`,
+    )
+    const width = Math.min(columnWidth, element?.offsetWidth || 240)
+    const height = element?.offsetHeight || 200
+    const column = columnBottoms.indexOf(Math.min(...columnBottoms))
+    const x = Math.round(padding + column * (columnWidth + gap) + Math.max(0, (columnWidth - width) / 2))
+    const y = Math.round(columnBottoms[column])
+    columnBottoms[column] += height + gap
+    return { ...widget, x, y }
+  })
+
+  arranged.forEach((widget) => {
+    localStorage.setItem(`widget-layout-${widget.id}`, JSON.stringify({ x: widget.x, y: widget.y }))
+  })
+  widgets.value = arranged
+  layoutVersion.value += 1
+  await updateWidgetsLayout(arranged)
+  updateWidgetCache()
+  await nextTick()
+  observeWidgetSizes()
+  scheduleCollisionCheck()
 }
 
 // Gallery
@@ -135,11 +270,14 @@ onMounted(async () => {
   // Resize canvas when sidebar toggles
   const ro = new ResizeObserver(() => {
     const canvas = canvasRef.value
-    if (!canvas || !canvas.parentElement) return
-    const rect = canvas.parentElement.getBoundingClientRect()
-    canvas.width = rect.width; canvas.height = rect.height
+    if (canvas?.parentElement) {
+      const rect = canvas.parentElement.getBoundingClientRect()
+      canvas.width = rect.width; canvas.height = rect.height
+    }
+    scheduleCollisionCheck()
   })
   resizeObserver = ro
+  widgetResizeObserver = ro
   if (sceneRef.value) ro.observe(sceneRef.value)
   stopSceneResizeWatch = watch(sceneRef, (scene) => {
     if (!scene) return
@@ -148,6 +286,10 @@ onMounted(async () => {
   }, { flush: 'post' })
 
   customWallpaper.value = await getWallpaper()
+  await nextTick()
+  observeWidgetSizes()
+  scheduleCollisionCheck()
+  document.addEventListener('pointerup', scheduleCollisionCheck)
 })
 
 let resizeObserver: ResizeObserver | null = null
@@ -155,7 +297,20 @@ let stopSceneResizeWatch: (() => void) | null = null
 onUnmounted(() => {
   cancelAnimationFrame(animId)
   resizeObserver?.disconnect()
+  widgetResizeObserver = null
   stopSceneResizeWatch?.()
+  if (collisionFrame) cancelAnimationFrame(collisionFrame)
+  document.removeEventListener('pointerup', scheduleCollisionCheck)
+})
+
+watch(layoutArrangementRequest, () => {
+  void autoArrangeWidgets()
+})
+
+watch(() => widgets.value.length, async () => {
+  await nextTick()
+  observeWidgetSizes()
+  scheduleCollisionCheck()
 })
 
 watch(customWallpaper, async (v) => {
@@ -245,7 +400,10 @@ watch(weatherWallpaper, async (on) => {
       v-else
       ref="sceneRef"
       class="calendar-scene"
-      :class="weatherData && weatherWallpaper ? getWeatherClass(weatherData.code) : ''"
+      :class="[
+        weatherData && weatherWallpaper ? getWeatherClass(weatherData.code) : '',
+        { 'show-layout-grid': showLayoutGrid },
+      ]"
       :style="sceneBgStyle"
       @contextmenu.self="openCanvasMenu"
     >
@@ -253,6 +411,17 @@ watch(weatherWallpaper, async (on) => {
 
       <!-- Add widget button -->
       <button class="add-widget-btn" @click="showGallery = true; selectedType = ''" title="添加组件">＋</button>
+
+      <button
+        v-if="collisionCount > 0"
+        type="button"
+        class="collision-warning"
+        title="点击自动整理布局"
+        @click="autoArrangeWidgets"
+      >
+        <span class="collision-warning-dot" aria-hidden="true" />
+        {{ collisionCount }} 个组件重叠 · 点击整理
+      </button>
 
       <!-- Welcome greeting: shown while loading or when no widgets -->
       <div v-if="loading || widgets.length === 0" class="welcome-greeting">
@@ -265,9 +434,13 @@ watch(weatherWallpaper, async (on) => {
       <!-- Dynamic widgets -->
       <WidgetWrapper
         v-for="w in widgets"
-        :key="w.id"
+        :key="`${w.id}-${layoutVersion}`"
         :widget-id="w.id!"
         :type="w.type"
+        :z-index="w.zIndex ?? 1"
+        :active="activeWidgetId === w.id"
+        :overlapping="overlappingWidgetIds.has(w.id!)"
+        @activate="bringWidgetToFront(w.id!)"
         @delete="onRemoveWidget(w.id!)"
       >
         <component :is="widgetMap[w.type]" :widget-id="w.id!" :initial-x="w.x" :initial-y="w.y" />
@@ -400,6 +573,17 @@ watch(weatherWallpaper, async (on) => {
   overflow: hidden; min-height: 500px;
   transition: background-color 1.5s ease, box-shadow 1.5s ease;
 }
+.calendar-scene.show-layout-grid::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(45, 212, 168, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 212, 168, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
 html.dark .calendar-scene {
   background-color: #262A32;
   background-image:
@@ -418,6 +602,35 @@ html.dark .calendar-scene {
 @keyframes storm-flash { 0%,90%,92%,96%,100%{box-shadow:inset 0 0 120px rgba(10,15,25,0.7)} 91%,91.5%{box-shadow:inset 0 0 200px rgba(255,255,255,0.4)} 95%,95.3%{box-shadow:inset 0 0 180px rgba(255,255,240,0.3)} }
 
 .weather-canvas { position: absolute; inset: 0; z-index: 999; pointer-events: none; }
+
+.collision-warning {
+  position: absolute;
+  z-index: 220;
+  top: 46px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-danger);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
+  cursor: pointer;
+  font: 650 0.62rem/1 var(--font-family);
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.collision-warning:hover { border-color: var(--color-danger); }
+.collision-warning-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 13%, transparent);
+}
 
 .add-widget-btn {
   position: absolute; top: 8px; right: 8px; z-index: 200;

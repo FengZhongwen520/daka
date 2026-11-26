@@ -11,7 +11,14 @@ export interface SiteItem {
   order?: number
   createdAt: Date
 }
-export interface WidgetInstance { id?: number; type: string; x: number; y: number; projectId: number }
+export interface WidgetInstance {
+  id?: number
+  type: string
+  x: number
+  y: number
+  projectId: number
+  zIndex?: number
+}
 
 class DakaDB extends Dexie {
   projects!: Table<Project, number>
@@ -201,6 +208,18 @@ export async function removeWidget(id: number): Promise<void> {
 }
 export async function updateWidgetPos(id: number, x: number, y: number): Promise<void> {
   await db.widgets.update(id, { x, y })
+}
+export async function updateWidgetZ(id: number, zIndex: number): Promise<void> {
+  await db.widgets.update(id, { zIndex })
+}
+export async function updateWidgetsLayout(items: WidgetInstance[]): Promise<void> {
+  await db.transaction('rw', db.widgets, async () => {
+    for (const item of items) {
+      if (item.id != null) {
+        await db.widgets.update(item.id, { x: item.x, y: item.y, zIndex: item.zIndex })
+      }
+    }
+  })
 }
 
 // Wallpaper

@@ -48,7 +48,10 @@
   --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.06);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.10);
   --shadow-card-hover: 0 12px 40px rgba(0, 0, 0, 0.14);
-  --widget-glass-bg: rgba(255, 255, 255, 0.42);
+  --widget-glass-rgb: 255, 255, 255;
+  --widget-glass-alpha: 0.42;
+  --widget-glass-alpha-effective: var(--widget-glass-alpha);
+  --widget-glass-bg: rgba(var(--widget-glass-rgb), var(--widget-glass-alpha-effective));
   --widget-glass-border: rgba(255, 255, 255, 0.34);
   --widget-glass-shadow: 0 14px 42px rgba(15, 23, 42, 0.06);
   --widget-glass-shadow-hover: 0 18px 48px rgba(15, 23, 42, 0.08);
@@ -91,7 +94,9 @@ html.dark {
   --status-idle-dark: #d9b81f;
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.45);
   --shadow-card-hover: 0 12px 40px rgba(0, 0, 0, 0.5);
-  --widget-glass-bg: rgba(30, 34, 40, 0.58);
+  --widget-glass-rgb: 30, 34, 40;
+  --widget-glass-alpha-effective: calc(var(--widget-glass-alpha) + 0.14);
+  --widget-glass-bg: rgba(var(--widget-glass-rgb), var(--widget-glass-alpha-effective));
   --widget-glass-border: rgba(255, 255, 255, 0.1);
   --widget-glass-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
   --widget-glass-shadow-hover: 0 18px 48px rgba(0, 0, 0, 0.4);

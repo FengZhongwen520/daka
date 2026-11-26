@@ -1,6 +1,10 @@
 import { ref, onUnmounted } from 'vue'
 
-export function useDraggable(initialX: number, initialY: number) {
+export function useDraggable(
+  initialX: number,
+  initialY: number,
+  getSnapSize: () => number = () => 1,
+) {
   const x = ref(initialX)
   const y = ref(initialY)
 
@@ -22,8 +26,9 @@ export function useDraggable(initialX: number, initialY: number) {
 
   function onDragMove(e: MouseEvent) {
     if (!dragging) return
-    x.value = initX + (e.clientX - startX)
-    y.value = initY + (e.clientY - startY)
+    const snap = Math.max(1, getSnapSize())
+    x.value = Math.round((initX + (e.clientX - startX)) / snap) * snap
+    y.value = Math.round((initY + (e.clientY - startY)) / snap) * snap
   }
 
   function onDragEnd() {

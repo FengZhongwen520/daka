@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  name: 'projects' | 'wallpaper' | 'help' | 'trash' | 'sun' | 'moon' | 'system' | 'chevron-left' | 'chevron-right'
+  name: 'projects' | 'wallpaper' | 'layout' | 'help' | 'trash' | 'sun' | 'moon' | 'system' | 'chevron-left' | 'chevron-right'
 }>()
 </script>
 
@@ -21,6 +21,11 @@ defineProps<{
       <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
       <circle cx="8.5" cy="9" r="1.5" />
       <path d="m6 16 3.75-3.75 2.75 2.75 2.25-2.25L20 17" />
+    </template>
+
+    <template v-else-if="name === 'layout'">
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9.5 4v16M3.5 10h6M9.5 14.5h11" />
     </template>
 
     <template v-else-if="name === 'help'">
