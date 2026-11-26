@@ -217,9 +217,18 @@ watch(showModal, async (visible) => {
 <template>
   <aside class="app-sidebar" :class="{ collapsed }">
     <!-- Brand -->
-    <div class="sidebar-brand">
-      <span class="brand-word">daka</span>
-      <span class="brand-dot" aria-hidden="true">.</span>
+    <div class="sidebar-brand" aria-label="daka 哒咔">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32">
+          <path class="brand-page" d="M8.5 6.5h10.1l4.9 4.9v14.1H8.5z" />
+          <path class="brand-fold" d="M18.6 6.5v4.9h4.9" />
+          <path class="brand-check" d="m12.6 18.1 2.7 2.7 5.2-6" />
+        </svg>
+      </span>
+      <span class="brand-copy">
+        <span class="brand-word">daka<span class="brand-dot" aria-hidden="true">.</span></span>
+        <span class="brand-tagline">DAILY DESK</span>
+      </span>
     </div>
 
     <!-- Sidebar menu (3 items) -->
@@ -380,21 +389,48 @@ watch(showModal, async (visible) => {
 
 /* Brand */
 .sidebar-brand {
-  display: flex; align-items: baseline; gap: 1px;
-  padding: 16px 14px 12px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 12px 13px; flex-shrink: 0;
   color: var(--color-ink);
 }
 .app-sidebar.collapsed .sidebar-brand { display: none; }
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+  border-radius: 11px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.48), transparent 64%),
+    color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.09),
+    0 1px 0 rgba(255, 255, 255, 0.62) inset;
+}
+.brand-mark svg { width: 22px; height: 22px; }
+.brand-page { fill: color-mix(in srgb, var(--color-surface) 82%, transparent); stroke: var(--color-ink-2); stroke-width: 1.2; }
+.brand-fold { fill: none; stroke: var(--color-ink-3); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.brand-check { fill: none; stroke: var(--color-primary-hover); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .brand-word {
-  font-size: 1.24rem;
-  font-weight: 760;
-  letter-spacing: -0.075em;
-  line-height: 1;
+  font-size: 1.18rem;
+  font-weight: 790;
+  letter-spacing: -0.065em;
+  line-height: 0.88;
 }
 .brand-dot {
   color: var(--color-primary);
-  font-size: 1.24rem;
-  font-weight: 760;
+  font-size: 1.18rem;
+  font-weight: 790;
+  line-height: 0.88;
+}
+.brand-tagline {
+  color: var(--color-ink-3);
+  font-size: 0.47rem;
+  font-weight: 720;
+  letter-spacing: 0.13em;
   line-height: 1;
 }
 

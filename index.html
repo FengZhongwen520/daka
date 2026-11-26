@@ -49,16 +49,53 @@
       }
       .boot-brand {
         display: flex;
-        align-items: baseline;
+        align-items: center;
+        gap: 10px;
         font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-        font-size: 1.55rem;
+        font-size: 1.5rem;
         font-weight: 760;
-        letter-spacing: -0.075em;
         line-height: 1;
+      }
+      .boot-mark {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(45, 212, 168, 0.28);
+        border-radius: 13px;
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 64%),
+          rgba(45, 212, 168, 0.1);
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12), 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+      }
+      html.dark .boot-mark {
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.09), transparent 64%),
+          rgba(45, 212, 168, 0.12);
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+      }
+      .boot-mark svg { width: 27px; height: 27px; }
+      .boot-page { fill: rgba(255, 255, 255, 0.72); stroke: #596071; stroke-width: 1.2; }
+      html.dark .boot-page { fill: rgba(255, 255, 255, 0.06); stroke: rgba(255, 255, 255, 0.44); }
+      .boot-fold { fill: none; stroke: #8A93A3; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+      .boot-check { fill: none; stroke: #1FB99A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .boot-copy { display: flex; flex-direction: column; gap: 4px; }
+      .boot-word {
+        font-size: 1.5rem;
+        font-weight: 790;
+        letter-spacing: -0.065em;
+        line-height: 0.86;
       }
       .boot-dot {
         color: #2DD4A8;
         margin-left: 1px;
+      }
+      .boot-tagline {
+        color: #9CA3AF;
+        font-size: 0.5rem;
+        font-weight: 720;
+        letter-spacing: 0.13em;
+        line-height: 1;
       }
       .boot-line {
         position: relative;
@@ -108,7 +145,19 @@
   <body>
     <div id="app"></div>
     <div id="boot-loader" class="boot-loader" role="status" aria-label="正在打开 Dake">
-      <div class="boot-brand"><span>daka</span><span class="boot-dot">.</span></div>
+      <div class="boot-brand">
+        <span class="boot-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32">
+            <path class="boot-page" d="M8.5 6.5h10.1l4.9 4.9v14.1H8.5z" />
+            <path class="boot-fold" d="M18.6 6.5v4.9h4.9" />
+            <path class="boot-check" d="m12.6 18.1 2.7 2.7 5.2-6" />
+          </svg>
+        </span>
+        <span class="boot-copy">
+          <span class="boot-word">daka<span class="boot-dot">.</span></span>
+          <span class="boot-tagline">DAILY DESK</span>
+        </span>
+      </div>
       <span class="boot-line" aria-hidden="true"></span>
     </div>
     <script type="module" src="/src/main.ts"></script>

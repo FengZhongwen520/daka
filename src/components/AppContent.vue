@@ -91,6 +91,24 @@ async function onRemoveWidget(id: number) {
 // Gallery
 const showGallery = ref(false)
 const selectedType = ref('')
+const moreWidgetsOpen = ref(false)
+const galleryPrimaryTypes = new Set([
+  'bookmarks',
+  'bookmarks-import',
+  'weather',
+  'clock',
+  'todo',
+  'calculator',
+  'searchengine',
+  'translate',
+])
+const galleryPrimaryWidgets = computed(() => WIDGETS.filter(widget => galleryPrimaryTypes.has(widget.type)))
+const galleryMoreWidgets = computed(() => WIDGETS.filter(widget => !galleryPrimaryTypes.has(widget.type)))
+
+watch(showGallery, (open) => {
+  if (open) moreWidgetsOpen.value = false
+})
+
 const {
   showMenu: showCanvasMenu,
   menuX: canvasMenuX,
@@ -275,18 +293,86 @@ watch(weatherWallpaper, async (on) => {
     </ContextMenu>
 
     <!-- Gallery dialog -->
-    <UiDialog v-model="showGallery" title="添加组件" width="580px" :close-on-click-modal="false">
-      <div class="gallery-grid">
-        <div
-          v-for="w in WIDGETS"
-          :key="w.type"
-          class="gallery-item"
-          :class="{ selected: selectedType === w.type }"
-          @click="selectedType = w.type"
+    <UiDialog v-model="showGallery" title="组件库" width="620px" :close-on-click-modal="false">
+      <div class="gallery-intro">
+        <div>
+          <span class="gallery-kicker">BUILD YOUR DESK</span>
+          <p>选择常用工具，添加到你的工作台。</p>
+        </div>
+        <span class="gallery-total">{{ WIDGETS.length }} 个组件</span>
+      </div>
+
+      <section class="gallery-section" aria-labelledby="primary-widgets-title">
+        <div class="gallery-section-head">
+          <div>
+            <h3 id="primary-widgets-title">常用组件</h3>
+            <span>高频入口，优先展示</span>
+          </div>
+          <span class="gallery-count">{{ galleryPrimaryWidgets.length }}</span>
+        </div>
+        <div class="gallery-grid">
+          <button
+            v-for="w in galleryPrimaryWidgets"
+            :key="w.type"
+            type="button"
+            class="gallery-item"
+            :class="{ selected: selectedType === w.type }"
+            :aria-pressed="selectedType === w.type"
+            @click="selectedType = w.type"
+          >
+            <span class="gallery-icon" aria-hidden="true">{{ w.icon }}</span>
+            <span class="gallery-name">{{ w.name }}</span>
+            <span class="gallery-desc">{{ w.desc }}</span>
+            <span v-if="selectedType === w.type" class="gallery-selected" aria-hidden="true">✓</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="gallery-more" :class="{ 'is-open': moreWidgetsOpen }">
+        <button
+          type="button"
+          class="gallery-more-trigger"
+          :aria-expanded="moreWidgetsOpen"
+          aria-controls="gallery-more-panel"
+          @click="moreWidgetsOpen = !moreWidgetsOpen"
         >
-          <span class="gallery-icon">{{ w.icon }}</span>
-          <span class="gallery-name">{{ w.name }}</span>
-          <span class="gallery-desc">{{ w.desc }}</span>
+          <span class="gallery-more-icon" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span class="gallery-more-copy">
+            <strong>更多组件</strong>
+            <small>生活、装饰与进阶工具</small>
+          </span>
+          <span class="gallery-count">{{ galleryMoreWidgets.length }}</span>
+          <svg class="gallery-more-chevron" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m4 6 4 4 4-4" />
+          </svg>
+        </button>
+
+        <div id="gallery-more-panel" class="gallery-more-panel" :inert="!moreWidgetsOpen">
+          <div class="gallery-more-clip">
+            <div class="gallery-more-body">
+              <div class="gallery-grid">
+                <button
+                  v-for="w in galleryMoreWidgets"
+                  :key="w.type"
+                  type="button"
+                  class="gallery-item"
+                  :class="{ selected: selectedType === w.type }"
+                  :aria-pressed="selectedType === w.type"
+                  @click="selectedType = w.type"
+                >
+                  <span class="gallery-icon" aria-hidden="true">{{ w.icon }}</span>
+                  <span class="gallery-name">{{ w.name }}</span>
+                  <span class="gallery-desc">{{ w.desc }}</span>
+                  <span v-if="selectedType === w.type" class="gallery-selected" aria-hidden="true">✓</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -296,7 +382,7 @@ watch(weatherWallpaper, async (on) => {
           class="ui-button ui-button-primary"
           :disabled="!selectedType"
           @click="onAddWidget(selectedType); showGallery = false"
-        >添加</button>
+        >添加组件</button>
       </template>
     </UiDialog>
   </main>
@@ -378,18 +464,213 @@ html.dark .calendar-scene {
   line-height: 1;
 }
 
-.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.gallery-item {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 16px 8px; border-radius: var(--radius-md); cursor: pointer;
-  border: 2px solid transparent; background: rgba(0,0,0,0.02);
-  transition: all 0.2s;
+.gallery-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
 }
-.gallery-item:hover { background: var(--color-primary-soft); border-color: rgba(45,212,168,0.2); }
-.gallery-item.selected { background: var(--color-primary-soft); border-color: var(--color-primary); }
-.gallery-icon { font-size: 30px; }
-.gallery-name { font-size: 0.8rem; font-weight: 700; color: var(--color-ink-2); }
-.gallery-desc { font-size: 0.65rem; color: var(--color-ink-3); text-align: center; line-height: 1.3; }
+.gallery-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--color-primary-hover);
+  font-size: 0.55rem;
+  font-weight: 780;
+  letter-spacing: 0.14em;
+}
+.gallery-intro p { color: var(--color-ink-2); font-size: 0.74rem; line-height: 1.5; }
+.gallery-total {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-ink-3);
+  font-size: 0.6rem;
+  font-weight: 650;
+}
+.gallery-section { margin-top: 16px; }
+.gallery-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.gallery-section-head > div {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.gallery-section-head h3 { color: var(--color-ink); font-size: 0.78rem; font-weight: 760; }
+.gallery-section-head > div > span { color: var(--color-ink-3); font-size: 0.62rem; }
+.gallery-count {
+  min-width: 22px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  color: var(--color-ink-3);
+  font-size: 0.58rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.gallery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.gallery-item {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-height: 120px; padding: 14px 7px 12px; border-radius: 12px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+  color: inherit; font-family: inherit;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.gallery-item:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-primary-soft) 72%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+}
+.gallery-item.selected {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--color-primary-soft) 78%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 72%, var(--color-border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent), 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.gallery-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 2px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+  border-radius: 13px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.72), transparent),
+    color-mix(in srgb, var(--color-surface-soft) 68%, transparent);
+  box-shadow:
+    0 5px 12px rgba(15, 23, 42, 0.07),
+    0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  font-size: 25px;
+  line-height: 1;
+}
+.gallery-name { font-size: 0.77rem; font-weight: 740; color: var(--color-ink); }
+.gallery-desc {
+  min-height: 2.4em;
+  color: var(--color-ink-3);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  text-align: center;
+}
+.gallery-selected {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #10382f;
+  font-size: 0.62rem;
+  font-weight: 900;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--color-primary) 36%, transparent);
+}
+.gallery-more {
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-surface-soft) 50%, transparent);
+  overflow: hidden;
+}
+.gallery-more-trigger {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 160ms ease;
+}
+.gallery-more-trigger:hover { background: color-mix(in srgb, var(--color-ink) 4%, transparent); }
+.gallery-more-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  place-content: center;
+  gap: 3px;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.gallery-more-icon i { width: 6px; height: 6px; border-radius: 2px; background: currentColor; }
+.gallery-more-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.gallery-more-copy strong { font-size: 0.72rem; font-weight: 740; }
+.gallery-more-copy small { color: var(--color-ink-3); font-size: 0.6rem; }
+.gallery-more-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--color-ink-3);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: rotate 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gallery-more.is-open .gallery-more-chevron { rotate: 180deg; }
+.gallery-more-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gallery-more.is-open .gallery-more-panel { grid-template-rows: 1fr; }
+.gallery-more-clip { min-height: 0; overflow: hidden; }
+.gallery-more-body {
+  padding: 2px 10px 10px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 170ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gallery-more.is-open .gallery-more-body { opacity: 1; transform: translateY(0); }
+html.dark .gallery-item { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.035) inset; }
+html.dark .gallery-item:hover,
+html.dark .gallery-item.selected { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28); }
+html.dark .gallery-icon {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), transparent),
+    color-mix(in srgb, var(--color-surface-soft) 88%, transparent);
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+@media (max-width: 560px) {
+  .gallery-intro { align-items: flex-start; gap: 10px; }
+  .gallery-section-head > div { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .gallery-section-head > div > span { display: none; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gallery-item { min-height: 112px; }
+  .gallery-more-copy small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 
 .pen-svg {
   position: absolute; bottom: 4%; right: 6%;
