@@ -136,7 +136,19 @@ export async function initializeStorage(): Promise<void> {
     persistMode('local')
     return
   }
-  await hydrateCloud()
+  try {
+    await hydrateCloud()
+  } catch (reason) {
+    if (reason instanceof ApiError && reason.status === 401) {
+      clearSession()
+      storageError.value = '登录状态已失效，请重新登录'
+    } else {
+      storageError.value = reason instanceof Error
+        ? `${reason.message}，暂以本地模式打开`
+        : '云端存储暂时不可用，暂以本地模式打开'
+    }
+    persistMode('local')
+  }
 }
 
 async function hydrateCloud(): Promise<void> {
