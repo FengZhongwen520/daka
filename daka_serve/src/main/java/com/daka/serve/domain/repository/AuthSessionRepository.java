@@ -4,6 +4,7 @@ import com.daka.serve.domain.model.AuthSession;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface AuthSessionRepository {
     AuthSession save(AuthSession session);
@@ -13,4 +14,6 @@ public interface AuthSessionRepository {
     void deleteByTokenHash(String tokenHash);
 
     void deleteExpired(Instant now);
+
+    void deleteByUserId(UUID userId);
 }

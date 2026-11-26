@@ -4,6 +4,7 @@ import java.util.UUID;
 
 public record UserView(
     UUID id,
-    String loginId
+    String loginId,
+    String email
 ) {
 }

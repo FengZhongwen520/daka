@@ -14,6 +14,8 @@
 - 番茄钟倒计时由后端权威计算，运行中每 5 秒推送，操作和阶段切换立即推送。
 - 饮水记录按日期保存在服务端，每次加水通过 WebSocket 通知当前用户的其他客户端。
 - 照片云端只保存 `local-photo://...` 引用，图片内容留在当前设备的 IndexedDB。
+- 登录账号可以绑定验证邮箱，并通过一次性验证码重置密码。
+- 本地与云端项目可以双向同步；同 ID 支持“覆盖”或“新增 ID”，覆盖前会二次确认。
 
 记录按用户隔离；业务状态、存储键和值均加密，账号标识加密，密码只保存 PBKDF2 哈希，会话令牌只保存 SHA-256 哈希。
 
@@ -55,6 +57,10 @@ npm run test:all
 - `GET|POST /api/water/...`
 - `POST /api/realtime/ticket`
 - `WS /ws/realtime?ticket=...`
+- `POST /api/auth/email/request`
+- `POST /api/auth/email/verify`
+- `POST /api/auth/password/forgot`
+- `POST /api/auth/password/reset`
 
 除注册和登录外，均要求 `Authorization: Bearer <token>`。
 
@@ -66,6 +72,8 @@ npm run test:all
 - `DAKA_LOOKUP_PEPPER`：Base64 编码、至少 32 字节的查询索引密钥。
 - `DAKA_DB_URL`、`DAKA_DB_USERNAME`、`DAKA_DB_PASSWORD`：数据库连接。
 - `DAKA_CORS_ORIGINS`：允许访问 API 的前端来源，逗号分隔。
+- `DAKA_SMTP_HOST`、`DAKA_SMTP_PORT`、`DAKA_SMTP_USERNAME`、
+  `DAKA_SMTP_PASSWORD`、`DAKA_MAIL_FROM`：邮箱验证码发信配置。
 
 密钥不得提交到仓库。生产环境应使用独立、受备份保护的密钥管理系统，并在发布前验证数据库备份和恢复流程。
 

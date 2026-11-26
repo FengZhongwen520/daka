@@ -18,6 +18,18 @@ spring:
     multipart:
       max-request-size: 20MB
       max-file-size: 20MB
+  mail:
+    host: ${DAKA_SMTP_HOST:}
+    port: ${DAKA_SMTP_PORT:587}
+    username: ${DAKA_SMTP_USERNAME:}
+    password: ${DAKA_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${DAKA_SMTP_AUTH:true}
+          starttls:
+            enable: ${DAKA_SMTP_STARTTLS:true}
+            required: ${DAKA_SMTP_STARTTLS:true}
 
 server:
   port: ${DAKA_SERVER_PORT:8080}
@@ -32,3 +44,6 @@ daka:
     allowed-origins: ${DAKA_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   storage:
     max-value-bytes: ${DAKA_STORAGE_MAX_VALUE_BYTES:12582912}
+  mail:
+    from: ${DAKA_MAIL_FROM:}
+    code-ttl-seconds: ${DAKA_MAIL_CODE_TTL_SECONDS:600}

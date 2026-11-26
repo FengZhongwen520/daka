@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class JpaAuthSessionRepository implements AuthSessionRepository {
@@ -44,5 +45,10 @@ public class JpaAuthSessionRepository implements AuthSessionRepository {
     @Override
     public void deleteExpired(Instant now) {
         repository.deleteByExpiresAtBefore(now);
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        repository.deleteByUserId(userId);
     }
 }

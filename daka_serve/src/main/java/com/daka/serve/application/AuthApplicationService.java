@@ -65,6 +65,9 @@ public class AuthApplicationService {
             lookup,
             cipher.encrypt(normalized),
             passwords.hash(password),
+            null,
+            null,
+            null,
             now
         );
         UserAccount saved = users.save(user);
@@ -100,7 +103,7 @@ public class AuthApplicationService {
     @Transactional(readOnly = true)
     public UserView currentUser(UUID userId) {
         UserAccount user = users.findById(userId).orElseThrow(UnauthorizedException::new);
-        return new UserView(user.id(), cipher.decrypt(user.encryptedLogin()));
+        return toView(user);
     }
 
     @Transactional
@@ -121,7 +124,7 @@ public class AuthApplicationService {
         ));
         return new IssuedSession(
             token.raw(),
-            new UserView(user.id(), cipher.decrypt(user.encryptedLogin()))
+            toView(user)
         );
     }
 
@@ -141,5 +144,13 @@ public class AuthApplicationService {
             throw new ValidationException("请输入账号");
         }
         return loginId.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private UserView toView(UserAccount user) {
+        return new UserView(
+            user.id(),
+            cipher.decrypt(user.encryptedLogin()),
+            user.encryptedEmail() == null ? null : cipher.decrypt(user.encryptedEmail())
+        );
     }
 }

@@ -9,6 +9,9 @@ public record UserAccount(
     String loginLookup,
     String encryptedLogin,
     String passwordHash,
+    String encryptedEmail,
+    String emailLookup,
+    Instant emailVerifiedAt,
     Instant createdAt
 ) {
     public UserAccount {

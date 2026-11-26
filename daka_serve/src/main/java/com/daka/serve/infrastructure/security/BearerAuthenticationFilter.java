@@ -34,7 +34,9 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
             || path.startsWith("/ws/")
             || path.equals("/api/serve/health")
             || path.equals("/api/auth/login")
-            || path.equals("/api/auth/register");
+            || path.equals("/api/auth/register")
+            || path.equals("/api/auth/password/forgot")
+            || path.equals("/api/auth/password/reset");
     }
 
     @Override

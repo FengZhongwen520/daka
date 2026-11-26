@@ -17,3 +17,6 @@ daka:
     allowed-origins: http://localhost:5173
   storage:
     max-value-bytes: 12582912
+  mail:
+    from: noreply@daka.test
+    code-ttl-seconds: 600

@@ -30,7 +30,13 @@ export const storageError = ref('')
 export const storageRevision = ref(0)
 
 export function getCloudToken(): string | null {
-  return storageMode.value === 'cloud' ? sessionToken : null
+  return sessionToken
+}
+
+export function updateCloudUserEmail(email: string): void {
+  if (!cloudUser.value) return
+  cloudUser.value = { ...cloudUser.value, email }
+  writeRaw(USER_KEY, JSON.stringify(cloudUser.value))
 }
 
 function readRaw(key: string): string | null {
@@ -221,6 +227,43 @@ export function getAllItems(): Record<string, string> {
     }
   } catch {
     // Return whatever could be read.
+  }
+  return values
+}
+
+export function getLocalItem(key: string): string | null {
+  try {
+    return localStorage.getItem(`${LOCAL_PREFIX}${key}`)
+  } catch {
+    return null
+  }
+}
+
+export function setLocalItem(key: string, value: string): void {
+  localStorage.setItem(`${LOCAL_PREFIX}${key}`, value)
+}
+
+export function removeLocalItem(key: string): void {
+  try {
+    localStorage.removeItem(`${LOCAL_PREFIX}${key}`)
+    localStorage.removeItem(key)
+  } catch {
+    // Ignore restricted storage.
+  }
+}
+
+export function getLocalItems(): Record<string, string> {
+  const values: Record<string, string> = {}
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const storageKey = localStorage.key(index)
+      if (!storageKey?.startsWith(LOCAL_PREFIX)) continue
+      const appKey = storageKey.slice(LOCAL_PREFIX.length)
+      const value = localStorage.getItem(storageKey)
+      if (value != null) values[appKey] = value
+    }
+  } catch {
+    return {}
   }
   return values
 }

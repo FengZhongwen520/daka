@@ -4,6 +4,7 @@ const API_BASE = (configuredBase || '/api').replace(/\/+$/, '')
 export interface CloudUser {
   id: string
   loginId: string
+  email?: string | null
 }
 
 export interface AuthSession {
@@ -62,7 +63,13 @@ export async function apiRequest<T>(
   }
 
   if (response.status === 204) return undefined as T
-  return await response.json() as T
+  const text = await response.text()
+  if (!text.trim()) return undefined as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new ApiError('服务端返回了无法解析的数据', response.status)
+  }
 }
 
 export function register(loginId: string, password: string): Promise<AuthSession> {
@@ -112,6 +119,44 @@ export interface RealtimeTicket {
 
 export function createRealtimeTicket(token: string): Promise<RealtimeTicket> {
   return apiRequest<RealtimeTicket>('/realtime/ticket', { method: 'POST' }, token)
+}
+
+export interface MailDispatch {
+  accepted: boolean
+  expiresInSeconds: number
+  maskedEmail: string
+}
+
+export function requestEmailBinding(token: string, email: string): Promise<MailDispatch> {
+  return apiRequest<MailDispatch>('/auth/email/request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }, token)
+}
+
+export function verifyEmailBinding(
+  token: string,
+  email: string,
+  code: string,
+): Promise<{ email: string }> {
+  return apiRequest<{ email: string }>('/auth/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  }, token)
+}
+
+export function requestPasswordReset(email: string): Promise<MailDispatch> {
+  return apiRequest<MailDispatch>('/auth/password/forgot', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  return apiRequest<void>('/auth/password/reset', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword }),
+  })
 }
 
 export function realtimeUrl(ticket: string): string {

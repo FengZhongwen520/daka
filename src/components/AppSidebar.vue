@@ -18,6 +18,9 @@ import { refreshWeather, weatherError } from '../utils/weather'
 import type { Project } from '../types'
 import SidebarIcon from './common/SidebarIcon.vue'
 import { askConfirm, notify } from '../utils/feedback'
+import EmailBindingDialog from './EmailBindingDialog.vue'
+import PasswordResetDialog from './PasswordResetDialog.vue'
+import ProjectSyncDialog from './ProjectSyncDialog.vue'
 import { getItem, removeItem } from '../storage'
 import {
   cloudUser,
@@ -42,6 +45,9 @@ const authMode = ref<'login' | 'register'>('login')
 const cloudLoginId = ref('')
 const cloudPassword = ref('')
 const authError = ref('')
+const showEmailBinding = ref(false)
+const showPasswordReset = ref(false)
+const showProjectSync = ref(false)
 let weatherTimer: ReturnType<typeof setInterval> | null = null
 
 const currentProject = computed(() => projects.value.find(p => p.id === selectedProjectId.value))
@@ -148,6 +154,10 @@ async function onCloudLogout() {
   } catch (reason) {
     authError.value = reason instanceof Error ? reason.message : '退出登录失败'
   }
+}
+
+function onProjectSyncCompleted() {
+  location.reload()
 }
 
 const wallpaperInput = ref<HTMLInputElement>()
@@ -341,6 +351,15 @@ watch(showModal, async (visible) => {
 
           <template v-if="cloudUser">
             <p class="storage-account">已登录：{{ cloudUser.loginId }}</p>
+            <p class="storage-account">
+              邮箱：{{ cloudUser.email || '未绑定' }}
+            </p>
+            <button type="button" class="sidebar-text-btn storage-email-btn" @click="showEmailBinding = true">
+              {{ cloudUser.email ? '更换绑定邮箱' : '绑定邮箱' }}
+            </button>
+            <button type="button" class="sidebar-text-btn storage-email-btn" @click="showProjectSync = true">
+              项目同步
+            </button>
             <div class="storage-actions">
               <button
                 type="button"
@@ -392,6 +411,12 @@ watch(showModal, async (visible) => {
             >
               {{ authMode === 'login' ? '没有账号？注册' : '已有账号？登录' }}
             </button>
+            <button
+              v-if="authMode === 'login'"
+              type="button"
+              class="sidebar-text-btn storage-auth-switch"
+              @click="showPasswordReset = true"
+            >忘记密码</button>
           </template>
 
           <p v-if="authError || storageError" class="storage-error">{{ authError || storageError }}</p>
@@ -554,6 +579,12 @@ watch(showModal, async (visible) => {
       <SidebarIcon :name="collapsed ? 'chevron-right' : 'chevron-left'" />
     </button>
   </aside>
+  <EmailBindingDialog
+    v-model="showEmailBinding"
+    :current-email="cloudUser?.email"
+  />
+  <PasswordResetDialog v-model="showPasswordReset" />
+  <ProjectSyncDialog v-model="showProjectSync" @completed="onProjectSyncCompleted" />
 </template>
 
 <style scoped>
@@ -609,6 +640,10 @@ watch(showModal, async (visible) => {
 }
 .storage-note {
   margin: 9px 0;
+}
+.storage-email-btn {
+  display: block;
+  margin: -2px 0 8px auto;
 }
 .storage-auth-form {
   display: flex;

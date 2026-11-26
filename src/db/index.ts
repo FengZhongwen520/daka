@@ -59,7 +59,7 @@ class DakaDB extends Dexie {
       projects: '++id, name',
       checkins: '++id, [projectId+date]',
       photos: '++id, position',
-      localPhotoAssets: '++id, &localUrl, position',
+      localPhotoAssets: '++id, &localUrl, position, dataUrl',
       memos: '++id, memoKey',
       diaryEntries: '++id, [widgetId+date], widgetId, date, updatedAt',
       sites: '++id, widgetId',

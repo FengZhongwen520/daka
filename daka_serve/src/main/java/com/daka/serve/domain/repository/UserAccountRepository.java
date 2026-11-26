@@ -10,5 +10,7 @@ public interface UserAccountRepository {
 
     Optional<UserAccount> findByLoginLookup(String loginLookup);
 
+    Optional<UserAccount> findByEmailLookup(String emailLookup);
+
     UserAccount save(UserAccount user);
 }

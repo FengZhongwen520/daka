@@ -26,6 +26,11 @@ public class JpaUserAccountRepository implements UserAccountRepository {
     }
 
     @Override
+    public Optional<UserAccount> findByEmailLookup(String emailLookup) {
+        return repository.findByEmailLookup(emailLookup).map(this::toDomain);
+    }
+
+    @Override
     public UserAccount save(UserAccount user) {
         return toDomain(repository.save(toEntity(user)));
     }
@@ -36,6 +41,9 @@ public class JpaUserAccountRepository implements UserAccountRepository {
             entity.getLoginLookup(),
             entity.getEncryptedLogin(),
             entity.getPasswordHash(),
+            entity.getEncryptedEmail(),
+            entity.getEmailLookup(),
+            entity.getEmailVerifiedAt(),
             entity.getCreatedAt()
         );
     }
@@ -46,6 +54,9 @@ public class JpaUserAccountRepository implements UserAccountRepository {
         entity.setLoginLookup(user.loginLookup());
         entity.setEncryptedLogin(user.encryptedLogin());
         entity.setPasswordHash(user.passwordHash());
+        entity.setEncryptedEmail(user.encryptedEmail());
+        entity.setEmailLookup(user.emailLookup());
+        entity.setEmailVerifiedAt(user.emailVerifiedAt());
         entity.setCreatedAt(user.createdAt());
         return entity;
     }

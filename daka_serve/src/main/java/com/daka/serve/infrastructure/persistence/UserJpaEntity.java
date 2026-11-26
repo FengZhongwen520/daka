@@ -23,6 +23,15 @@ public class UserJpaEntity {
     @Column(name = "password_hash", nullable = false, length = 512)
     private String passwordHash;
 
+    @Column(name = "encrypted_email", length = 1024)
+    private String encryptedEmail;
+
+    @Column(name = "email_lookup", unique = true, length = 128)
+    private String emailLookup;
+
+    @Column(name = "email_verified_at")
+    private Instant emailVerifiedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -56,6 +65,30 @@ public class UserJpaEntity {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getEncryptedEmail() {
+        return encryptedEmail;
+    }
+
+    public void setEncryptedEmail(String encryptedEmail) {
+        this.encryptedEmail = encryptedEmail;
+    }
+
+    public String getEmailLookup() {
+        return emailLookup;
+    }
+
+    public void setEmailLookup(String emailLookup) {
+        this.emailLookup = emailLookup;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public void setEmailVerifiedAt(Instant emailVerifiedAt) {
+        this.emailVerifiedAt = emailVerifiedAt;
     }
 
     public Instant getCreatedAt() {
