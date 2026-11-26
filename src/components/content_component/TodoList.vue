@@ -172,7 +172,7 @@ function hideTodoTextTooltip() {
   if (todoTooltip.value) todoTooltip.value.visible = false
 }
 
-function showTodoTextTooltip(event: MouseEvent | PointerEvent, text: string) {
+function showTodoTextTooltip(event: Event, text: string) {
   hideTodoTextTooltip()
   const row = event.currentTarget as HTMLElement
   const target = row.querySelector<HTMLElement>('.todo-text') || row
@@ -223,6 +223,23 @@ function cycleStatus(id: number) {
   const item = items.value.find(i => i.id === id)
   if (!item) return
   item.status = item.status === 'todo' ? 'doing' : item.status === 'doing' ? 'done' : 'todo'
+}
+function moveItemByKeyboard(id: number, direction: -1 | 1) {
+  const item = items.value.find(candidate => candidate.id === id)
+  if (!item) return
+  const visibleSiblingIndexes = items.value
+    .map((candidate, index) => ({ candidate, index }))
+    .filter(({ candidate }) => (
+      candidate.groupId === item.groupId
+      && (tab.value === 'done' ? candidate.status === 'done' : candidate.status !== 'done')
+    ))
+    .map(({ index }) => index)
+  const position = visibleSiblingIndexes.findIndex(index => items.value[index].id === id)
+  const targetPosition = position + direction
+  if (position < 0 || targetPosition < 0 || targetPosition >= visibleSiblingIndexes.length) return
+  const sourceIndex = visibleSiblingIndexes[position]
+  const targetIndex = visibleSiblingIndexes[targetPosition]
+  ;[items.value[sourceIndex], items.value[targetIndex]] = [items.value[targetIndex], items.value[sourceIndex]]
 }
 function onStatusKeydown(e: KeyboardEvent, id: number) {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleStatus(id) }
@@ -698,6 +715,7 @@ onUnmounted(() => {
             class="todo-status"
             :class="entry.item.status"
             :title="statusLabel[entry.item.status]"
+            :aria-label="`状态：${statusLabel[entry.item.status]}，点击切换`"
             @click="cycleStatus(entry.item.id)"
             @keydown="onStatusKeydown($event, entry.item.id)"
           >
@@ -715,7 +733,14 @@ onUnmounted(() => {
           <span
             v-else
             class="todo-text"
-            :title="entry.item.text"
+            tabindex="0"
+            :aria-label="`${entry.item.text}。双击编辑，Alt 加上下方向键移动`"
+            @focus="showTodoTextTooltip($event, entry.item.text)"
+            @blur="hideTodoTextTooltip"
+            @click="showTodoTextTooltip($event, entry.item.text)"
+            @keydown.alt.up.prevent="moveItemByKeyboard(entry.item.id, -1)"
+            @keydown.alt.down.prevent="moveItemByKeyboard(entry.item.id, 1)"
+            @keydown.escape="hideTodoTextTooltip"
             @dblclick="startEdit(entry.item.id)"
           >{{ entry.item.text }}</span>
 
@@ -1091,9 +1116,10 @@ onUnmounted(() => {
 
 /* Status dot — 三态循环：○ 待办 → ● 进行中 → ✓ 已完成 */
 .todo-status {
-  width: 15px; height: 15px;
+  position: relative;
+  width: 24px; height: 24px;
   border-radius: 50%;
-  border: 1.8px solid var(--color-ink-3);
+  border: 0;
   background: transparent;
   cursor: pointer;
   padding: 0;
@@ -1102,22 +1128,37 @@ onUnmounted(() => {
   transition: all 0.18s;
   font-family: inherit;
 }
+.todo-status::before {
+  content: "";
+  width: 15px;
+  height: 15px;
+  border: 1.8px solid var(--color-ink-3);
+  border-radius: 50%;
+}
 .todo-status.doing {
+  background: color-mix(in srgb, var(--status-idle) 18%, transparent);
+}
+.todo-status.doing::before {
   border-color: var(--status-idle);
   background: var(--status-idle);
 }
 .todo-status.done {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.todo-status.done::before {
   border-color: var(--color-primary);
   background: var(--color-primary);
 }
 .todo-check {
   font-size: 9px; font-weight: 800;
   color: #fff; line-height: 1;
+  position: absolute;
 }
 .todo-dot {
   width: 5px; height: 5px; border-radius: 50%;
   background: #fff;
   animation: todo-pulse 1.2s ease infinite;
+  position: absolute;
 }
 @keyframes todo-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
@@ -1177,7 +1218,7 @@ onUnmounted(() => {
 
 /* Hover actions — 编辑 / 删除 */
 .todo-act {
-  width: 16px; height: 16px;
+  width: 24px; height: 24px;
   border: none; border-radius: 4px;
   background: transparent;
   color: var(--color-ink-3);

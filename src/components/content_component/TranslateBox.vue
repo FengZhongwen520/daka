@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
@@ -21,6 +21,9 @@ const outputText = ref('')
 const translating = ref(false)
 const inputRef = ref<HTMLTextAreaElement>()
 const clipboardHint = ref('')
+const outputProvider = ref('')
+const copyHint = ref('')
+let copyHintTimer: ReturnType<typeof setTimeout> | null = null
 
 // Auto-detect language as user types
 let detectTimer: ReturnType<typeof setTimeout> | null = null
@@ -42,18 +45,26 @@ async function translate() {
   if (!text || translating.value) return
 
   translating.value = true
+  outputProvider.value = ''
   const [from, to] = direction.value === 'zh2en' ? ['zh-CN', 'en'] : ['en', 'zh-CN']
 
   try {
-    outputText.value = await requestTranslation(text, from, to)
+    const translation = await requestTranslation(text, from, to)
+    outputText.value = translation.text
+    outputProvider.value = translation.provider
   } catch {
     outputText.value = '网络错误，请重试'
+    outputProvider.value = ''
   } finally {
     translating.value = false
   }
 }
 
-async function requestTranslation(text: string, from: string, to: string): Promise<string> {
+async function requestTranslation(
+  text: string,
+  from: string,
+  to: string,
+): Promise<{ text: string; provider: string }> {
   const mozhiUrl = new URL('https://mozhi.aryak.me/api/translate')
   mozhiUrl.searchParams.set('engine', 'google')
   mozhiUrl.searchParams.set('from', from)
@@ -64,7 +75,9 @@ async function requestTranslation(text: string, from: string, to: string): Promi
     const response = await fetch(mozhiUrl)
     if (response.ok) {
       const payload = await response.json() as { 'translated-text'?: string }
-      if (payload['translated-text']) return payload['translated-text']
+      if (payload['translated-text']) {
+        return { text: payload['translated-text'], provider: 'Mozhi · Google' }
+      }
     }
   } catch {
     // Try the secondary no-key endpoint below.
@@ -78,7 +91,7 @@ async function requestTranslation(text: string, from: string, to: string): Promi
   const payload = await response.json() as { responseData?: { translatedText?: string } }
   const result = payload.responseData?.translatedText
   if (!result) throw new Error('Translation response is empty')
-  return result
+  return { text: result, provider: 'MyMemory' }
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -92,6 +105,7 @@ function swapLanguages() {
   if (!outputText.value) return
   inputText.value = outputText.value
   outputText.value = ''
+  outputProvider.value = ''
   direction.value = direction.value === 'zh2en' ? 'en2zh' : 'zh2en'
   nextTick(() => inputRef.value?.focus())
 }
@@ -112,13 +126,14 @@ async function fillFromClipboard() {
   }
 }
 
-onMounted(fillFromClipboard)
-
 async function copyOutput() {
   try {
     await navigator.clipboard.writeText(outputText.value)
+    copyHint.value = '已复制译文'
+    if (copyHintTimer) clearTimeout(copyHintTimer)
+    copyHintTimer = setTimeout(() => { copyHint.value = '' }, 1600)
   } catch {
-    // fallback
+    copyHint.value = '复制失败'
   }
 }
 
@@ -130,6 +145,11 @@ watch(title, (v) => localStorage.setItem(`${tk}-title`, JSON.stringify(v)))
 // Drag
 const posKey = `translate-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
+
+onBeforeUnmount(() => {
+  if (detectTimer) clearTimeout(detectTimer)
+  if (copyHintTimer) clearTimeout(copyHintTimer)
+})
 </script>
 
 <template>
@@ -161,6 +181,9 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
           <span v-else>翻译</span>
         </button>
       </div>
+      <div class="tr-privacy-note">
+        翻译内容会发送至第三方服务，请勿输入敏感信息
+      </div>
 
       <!-- Input -->
       <div class="tr-input-area field-shell">
@@ -170,10 +193,12 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
           class="tr-textarea"
           :placeholder="direction === 'zh2en' ? '输入中文...' : 'Enter English...'"
           maxlength="500"
-          @focus="fillFromClipboard"
           @input="onInput"
           @keydown="onKeydown"
         ></textarea>
+        <button type="button" class="tr-paste-btn" title="从剪贴板粘贴" @click="fillFromClipboard">
+          从剪贴板
+        </button>
         <span class="tr-char-count">{{ inputText.length }}/500</span>
         <span v-if="clipboardHint" class="tr-clipboard-hint">{{ clipboardHint }}</span>
       </div>
@@ -188,6 +213,8 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
         </button>
         <div v-if="outputText" class="tr-output-text">{{ outputText }}</div>
         <div v-else class="tr-output-placeholder">译文将显示在这里...</div>
+        <span v-if="outputProvider" class="tr-provider">{{ outputProvider }}</span>
+        <span class="tr-copy-status" role="status" aria-live="polite">{{ copyHint }}</span>
       </div>
     </div>
   </div>
@@ -258,6 +285,12 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
   border-color: color-mix(in srgb, var(--color-primary) 44%, transparent);
   color: var(--color-ink);
 }
+.tr-privacy-note {
+  margin-top: -5px;
+  color: var(--color-ink-3);
+  font-size: 0.56rem;
+  line-height: 1.35;
+}
 
 /* Input area */
 .tr-input-area {
@@ -293,7 +326,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
   color: var(--color-ink);
   font-family: var(--font-family);
   line-height: 1.45;
-  padding: 0;
+  padding: 0 70px 0 0;
 }
 .tr-textarea::placeholder { color: var(--color-ink-3); font-weight: 400; }
 .tr-clipboard-hint {
@@ -303,6 +336,20 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
   color: color-mix(in srgb, var(--color-primary) 64%, var(--color-ink-2));
   font-size: 0.58rem;
 }
+.tr-paste-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-surface) 68%, transparent);
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 650 0.56rem/1 var(--font-family);
+}
+.tr-paste-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 .tr-swap-btn {
   width: 28px; height: 32px;
@@ -360,7 +407,7 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
   position: relative;
   background: color-mix(in srgb, var(--color-primary) 4%, transparent);
   border-radius: 10px;
-  padding: 10px 30px 10px 10px;
+  padding: 10px 30px 20px 10px;
   border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
   flex-shrink: 0;
   height: 68px;
@@ -413,6 +460,15 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 520, 200, false)
   stroke-linejoin: round;
 }
 .tr-copy-btn:hover { background: rgba(0, 0, 0, 0.1); color: var(--color-ink); }
+.tr-provider,
+.tr-copy-status {
+  position: absolute;
+  bottom: 3px;
+  color: var(--color-ink-3);
+  font-size: 0.52rem;
+}
+.tr-provider { left: 10px; }
+.tr-copy-status { right: 9px; color: var(--color-primary-hover); }
 html.dark .tr-copy-btn { background: rgba(255, 255, 255, 0.08); }
 html.dark .tr-copy-btn:hover { background: rgba(255, 255, 255, 0.14); }
 

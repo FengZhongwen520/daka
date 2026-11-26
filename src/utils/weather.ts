@@ -6,7 +6,7 @@ import {
   type WeatherData,
 } from '../store'
 
-const WEATHER_CACHE_KEY = 'daka-weather-cache-v4'
+const WEATHER_CACHE_KEY = 'daka-weather-cache-v5'
 const LOCATION_CACHE_KEY = 'daka-weather-location-v4'
 const MANUAL_LOCATION_KEY = 'daka-weather-manual-location-v3'
 const GEOLOCATION_ATTEMPT_KEY = 'daka-weather-geolocation-attempted'
@@ -36,6 +36,18 @@ interface OpenMeteoResponse {
     relative_humidity_2m?: number
     weather_code?: number
     wind_speed_10m?: number
+  }
+  hourly?: {
+    time?: string[]
+    temperature_2m?: number[]
+    weather_code?: number[]
+    precipitation_probability?: number[]
+  }
+  daily?: {
+    time?: string[]
+    weather_code?: number[]
+    temperature_2m_max?: number[]
+    temperature_2m_min?: number[]
   }
 }
 
@@ -158,7 +170,7 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<stri
   }
 }
 
-async function resolveLocation(): Promise<WeatherLocation> {
+async function resolveLocation(allowGeolocation = false): Promise<WeatherLocation> {
   const manual = readJson<WeatherLocation>(MANUAL_LOCATION_KEY)
   if (
     manual
@@ -184,7 +196,7 @@ async function resolveLocation(): Promise<WeatherLocation> {
     return cached
   }
 
-  const position = await requestGeolocation()
+  const position = allowGeolocation ? await requestGeolocation() : null
   if (position) {
     const latitude = position.coords.latitude
     const longitude = position.coords.longitude
@@ -227,7 +239,7 @@ function formatUpdateTime(value: unknown): string {
   return time ? time.slice(0, 5) : value
 }
 
-async function loadWeather(force: boolean): Promise<boolean> {
+async function loadWeather(force: boolean, allowGeolocation = false): Promise<boolean> {
   const cached = readWeatherCache()
   if (!force && cached && Date.now() - cached.cachedAt < CACHE_TTL) {
     applyCachedWeather(cached)
@@ -238,7 +250,7 @@ async function loadWeather(force: boolean): Promise<boolean> {
   weatherError.value = ''
 
   try {
-    const location = await resolveLocation()
+    const location = await resolveLocation(allowGeolocation)
     const url = new URL('https://api.open-meteo.com/v1/forecast')
     url.searchParams.set('latitude', String(location.latitude))
     url.searchParams.set('longitude', String(location.longitude))
@@ -246,8 +258,17 @@ async function loadWeather(force: boolean): Promise<boolean> {
       'current',
       'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
     )
+    url.searchParams.set(
+      'hourly',
+      'temperature_2m,weather_code,precipitation_probability',
+    )
+    url.searchParams.set(
+      'daily',
+      'weather_code,temperature_2m_max,temperature_2m_min',
+    )
     url.searchParams.set('timezone', 'auto')
-    url.searchParams.set('forecast_days', '1')
+    url.searchParams.set('forecast_days', '4')
+    url.searchParams.set('forecast_hours', '24')
 
     const response = await fetch(url)
     if (!response.ok) throw new Error(`Open-Meteo ${response.status}`)
@@ -258,12 +279,41 @@ async function loadWeather(force: boolean): Promise<boolean> {
     }
 
     const updatedAt = formatUpdateTime(current.time)
+    const currentTime = typeof current.time === 'string' ? current.time : ''
+    const hourlyTimes = payload.hourly?.time || []
+    const hourly: NonNullable<WeatherData['hourly']> = []
+    for (let index = 0; index < hourlyTimes.length && hourly.length < 8; index += 1) {
+      const time = hourlyTimes[index]
+      if (currentTime && time < currentTime.slice(0, 13) + ':00') continue
+      const temp = payload.hourly?.temperature_2m?.[index]
+      if (!Number.isFinite(temp)) continue
+      hourly.push({
+        time,
+        temp: Math.round(Number(temp)),
+        code: Number(payload.hourly?.weather_code?.[index] ?? 2),
+        precipitation: Math.round(Number(payload.hourly?.precipitation_probability?.[index] ?? 0)),
+      })
+    }
+    const daily: NonNullable<WeatherData['daily']> = []
+    ;(payload.daily?.time || []).slice(0, 3).forEach((date, index) => {
+      const maxTemp = payload.daily?.temperature_2m_max?.[index]
+      const minTemp = payload.daily?.temperature_2m_min?.[index]
+      if (!Number.isFinite(maxTemp) || !Number.isFinite(minTemp)) return
+      daily.push({
+        date,
+        maxTemp: Math.round(Number(maxTemp)),
+        minTemp: Math.round(Number(minTemp)),
+        code: Number(payload.daily?.weather_code?.[index] ?? 2),
+      })
+    })
     const data: WeatherData = {
       temp: Math.round(Number(current.temperature_2m) * 10) / 10,
       code: Number(current.weather_code ?? 2),
       humidity: Math.round(Number(current.relative_humidity_2m ?? 0)),
       windSpeed: Math.round(Number(current.wind_speed_10m ?? 0)),
       location: location.label,
+      hourly,
+      daily,
     }
     const cache: WeatherCache = {
       cachedAt: Date.now(),
@@ -292,9 +342,9 @@ async function loadWeather(force: boolean): Promise<boolean> {
   }
 }
 
-export function refreshWeather(force = false): Promise<boolean> {
+export function refreshWeather(force = false, allowGeolocation = false): Promise<boolean> {
   if (inflightRequest) return inflightRequest
-  inflightRequest = loadWeather(force).finally(() => {
+  inflightRequest = loadWeather(force, allowGeolocation).finally(() => {
     inflightRequest = null
   })
   return inflightRequest
@@ -317,7 +367,7 @@ export async function useAutomaticWeatherLocation(): Promise<boolean> {
   localStorage.removeItem(LOCATION_CACHE_KEY)
   localStorage.removeItem(WEATHER_CACHE_KEY)
   sessionStorage.removeItem(GEOLOCATION_ATTEMPT_KEY)
-  return refreshWeather(true)
+  return refreshWeather(true, true)
 }
 
 const initialCache = readWeatherCache()

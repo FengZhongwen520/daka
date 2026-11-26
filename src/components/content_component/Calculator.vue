@@ -1,26 +1,19 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
 const input = ref('')
 const result = ref('')
-const history = ref<{ expr: string; result: string }[]>([])
 const inputRef = ref<HTMLInputElement>()
 const keyboardVisible = ref(true)
 const title = ref('🔢 计算器')
+const copied = ref(false)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
-const historyKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
-
-const savedHistory = localStorage.getItem(historyKey)
-if (savedHistory) {
-  try { history.value = JSON.parse(savedHistory) } catch { history.value = [] }
-}
-
-function saveHistory() {
-  localStorage.setItem(historyKey, JSON.stringify(history.value.slice(0, 20)))
-}
+const legacyHistoryKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
+localStorage.removeItem(legacyHistoryKey)
 
 // Auto-calculate: = or Enter → history, edit after result → preview only
 watch(input, (val) => {
@@ -59,7 +52,11 @@ function doCalculate(expr: string) {
   try {
     if (!/^[\d+\-*/().%\s]+$/.test(e)) throw new Error('Invalid')
     const res = Function('"use strict"; return (' + e + ')')()
-    result.value = String(Number.isFinite(res) ? res : 'Error')
+    result.value = String(
+      Number.isFinite(res)
+        ? Number.parseFloat(Number(res).toPrecision(12))
+        : 'Error',
+    )
   } catch {
     result.value = 'Error'
   }
@@ -69,10 +66,6 @@ function calculate() {
   const expr = input.value.trim()
   if (!expr) return
   doCalculate(expr)
-  // Add to history
-  history.value.unshift({ expr: input.value, result: result.value })
-  if (history.value.length > 20) history.value.length = 20
-  saveHistory()
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -80,16 +73,16 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') { input.value = ''; result.value = '' }
 }
 
-function restoreFromHistory(item: { expr: string; result: string }) {
-  input.value = item.expr
-  result.value = item.result
-  keyboardVisible.value = true
-  nextTick(() => inputRef.value?.focus())
-}
-
-function deleteHistory(index: number) {
-  history.value.splice(index, 1)
-  saveHistory()
+async function copyResult() {
+  if (!result.value || result.value === 'Error') return
+  try {
+    await navigator.clipboard.writeText(result.value)
+    copied.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => { copied.value = false }, 1400)
+  } catch {
+    copied.value = false
+  }
 }
 
 // Drag
@@ -113,6 +106,9 @@ function onButtonClick(btn: string) {
 }
 
 // props defined above
+onUnmounted(() => {
+  if (copyTimer) clearTimeout(copyTimer)
+})
 </script>
 
 <template>
@@ -133,7 +129,17 @@ function onButtonClick(btn: string) {
           placeholder="输入算式，按 = 计算"
           @keydown="onKeydown"
         />
-        <span v-if="result" class="calc-result">= {{ result }}</span>
+        <span v-if="result" class="calc-result" role="status" aria-live="polite">= {{ result }}</span>
+        <button
+          v-if="result && result !== 'Error'"
+          type="button"
+          class="calc-copy"
+          :title="copied ? '已复制' : '复制结果'"
+          :aria-label="copied ? '已复制结果' : '复制结果'"
+          @click.stop="copyResult"
+        >
+          {{ copied ? '✓' : '复制' }}
+        </button>
       </div>
     </div>
 
@@ -154,20 +160,6 @@ function onButtonClick(btn: string) {
       </button>
     </div>
 
-    <!-- History -->
-    <div v-if="history.length > 0" class="calc-history">
-      <div class="calc-history-header">
-        <span>📋 历史</span>
-        <button class="calc-history-clear" @click="history = []; saveHistory()" title="清空">清空</button>
-      </div>
-      <div class="calc-history-list">
-        <div v-for="(h, i) in history" :key="i" class="calc-history-item" @click="restoreFromHistory(h)">
-          <span class="calc-history-expr">{{ h.expr }}</span>
-          <span class="calc-history-res">= {{ h.result }}</span>
-          <button class="calc-history-del" @click.stop="deleteHistory(i)">✕</button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -201,6 +193,18 @@ function onButtonClick(btn: string) {
   font-family: var(--font-mono);
   color: var(--color-primary); white-space: nowrap;
 }
+.calc-copy {
+  min-width: 30px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-surface) 58%, transparent);
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 650 0.56rem/1 var(--font-family);
+}
+.calc-copy:hover { border-color: var(--color-primary); color: var(--color-primary); }
 
 /* Buttons */
 .calc-buttons {
@@ -221,42 +225,10 @@ function onButtonClick(btn: string) {
 .calc-btn-eq:hover { background: var(--color-primary-hover); }
 .calc-btn-action { color: var(--color-danger); font-weight: 700; }
 
-/* History */
-.calc-history { border-top: 1px solid var(--color-border); }
-.calc-history-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 14px 4px; font-size: 0.7rem; color: var(--color-ink-3); font-weight: 600;
-}
-.calc-history-clear {
-  border: none; background: none; cursor: pointer;
-  font-size: 0.65rem; color: var(--color-ink-3); font-family: inherit; transition: color 0.2s;
-}
-.calc-history-clear:hover { color: var(--color-danger); }
-.calc-history-list { max-height: 102px; overflow-y: auto; padding: 0 14px 8px; }
-.calc-history-item {
-  display: flex; align-items: center; gap: 6px;
-  padding: 5px 0; cursor: pointer; border-radius: 4px;
-  transition: background 0.15s; font-size: 0.72rem;
-  font-family: 'SF Mono', 'Consolas', monospace;
-}
-.calc-history-item:hover { background: rgba(0,0,0,0.03); }
-.calc-history-expr { color: var(--color-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.calc-history-res { color: var(--color-primary); font-weight: 600; flex-shrink: 0; }
-.calc-history-del {
-  margin-left: auto; width: 16px; height: 16px; border-radius: 50%;
-  border: none; background: rgba(0,0,0,0.08); cursor: pointer;
-  font-size: 8px; color: var(--color-ink-3); display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.15s; flex-shrink: 0;
-}
-.calc-history-item:hover .calc-history-del { opacity: 1; }
-
 /* === Dark mode === */
 html.dark .calc-kb-toggle { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
 html.dark .calc-kb-toggle:hover { background: rgba(255,255,255,0.16); }
 html.dark .calc-btn { background: rgba(255,255,255,0.08); }
 html.dark .calc-btn:hover { background: rgba(255,255,255,0.13); }
 html.dark .calc-btn:active { background: rgba(255,255,255,0.18); }
-html.dark .calc-history { border-top-color: rgba(255,255,255,0.08); }
-html.dark .calc-history-item:hover { background: rgba(255,255,255,0.05); }
-html.dark .calc-history-del { background: rgba(255,255,255,0.12); }
 </style>

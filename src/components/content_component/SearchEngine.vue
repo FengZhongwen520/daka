@@ -161,7 +161,6 @@ onUnmounted(() => {
           :class="{ active: currentEngine === eng.id }"
           :title="eng.name + (defaultEngine === eng.id ? ' (默认)' : '')"
           @click="selectEngine(eng.id)"
-          @dblclick.prevent="setDefaultEngine(eng.id)"
         >
           <span class="se-engine-icon">
             <FaviconImg
@@ -178,6 +177,16 @@ onUnmounted(() => {
             title="默认引擎"
             aria-label="默认引擎"
           />
+        </button>
+        <button
+          type="button"
+          class="se-default-btn"
+          :class="{ active: currentEngine === defaultEngine }"
+          :disabled="currentEngine === defaultEngine"
+          :title="currentEngine === defaultEngine ? '当前已是默认引擎' : `将${engineMap[currentEngine].name}设为默认`"
+          @click="setDefaultEngine(currentEngine)"
+        >
+          {{ currentEngine === defaultEngine ? '★ 默认' : '☆ 设默认' }}
         </button>
       </div>
 
@@ -231,7 +240,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Hint tooltip -->
-    <div class="se-hint">单击切换引擎 · 双击设为默认</div>
+    <div class="se-hint">单击切换引擎 · 可单独设为默认</div>
   </div>
 </template>
 
@@ -322,6 +331,20 @@ onUnmounted(() => {
   background: var(--color-primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
+.se-default-btn {
+  min-height: 26px;
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 52%, transparent);
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 650 0.58rem/1 var(--font-family);
+}
+.se-default-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.se-default-btn.active,
+.se-default-btn:disabled { color: var(--color-primary); opacity: 0.72; cursor: default; }
 
 /* Search input row */
 .se-input-row {

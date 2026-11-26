@@ -22,6 +22,7 @@ export interface WeatherData {
 
 const viewMode = ref<'card' | 'window'>('card')
 const testMode = ref(false)
+const forecastMode = ref<'hourly' | 'daily'>('hourly')
 const editingLocation = ref(false)
 const cityDraft = ref('')
 const locationSaving = ref(false)
@@ -165,6 +166,17 @@ function getWeatherLabel(code: number): string {
   return '雷暴'
 }
 
+function hourLabel(value: string): string {
+  return value.slice(11, 16)
+}
+
+function dayLabel(value: string, index: number): string {
+  if (index === 0) return '今天'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value.slice(5)
+  return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()]
+}
+
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const posKey = `weather-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
@@ -240,6 +252,48 @@ onUnmounted(() => {
             <span>💨 {{ weatherData.windSpeed }} km/h</span>
             <span title="Weather data by Open-Meteo">Open-Meteo</span>
           </div>
+          <div
+            v-if="weatherData.hourly?.length || weatherData.daily?.length"
+            class="wf-forecast-section"
+          >
+            <div class="wf-forecast-tabs" role="tablist" aria-label="天气预报范围">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="forecastMode === 'hourly'"
+                :class="{ active: forecastMode === 'hourly' }"
+                @click="forecastMode = 'hourly'"
+              >逐小时</button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="forecastMode === 'daily'"
+                :class="{ active: forecastMode === 'daily' }"
+                @click="forecastMode = 'daily'"
+              >未来几天</button>
+            </div>
+            <div
+              v-if="forecastMode === 'hourly' && weatherData.hourly?.length"
+              class="wf-hourly"
+              aria-label="未来天气"
+            >
+              <div v-for="hour in weatherData.hourly" :key="hour.time" class="wf-hour">
+                <span>{{ hourLabel(hour.time) }}</span>
+                <strong>{{ getWeatherIcon(hour.code) }} {{ hour.temp }}°</strong>
+                <small>{{ hour.precipitation }}%</small>
+              </div>
+            </div>
+            <div
+              v-else-if="forecastMode === 'daily' && weatherData.daily?.length"
+              class="wf-daily"
+            >
+              <div v-for="(day, index) in weatherData.daily" :key="day.date" class="wf-day">
+                <span>{{ dayLabel(day.date, index) }}</span>
+                <span>{{ getWeatherIcon(day.code) }} {{ getWeatherLabel(day.code) }}</span>
+                <strong>{{ day.minTemp }}° / {{ day.maxTemp }}°</strong>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
     </div>
@@ -288,12 +342,12 @@ onUnmounted(() => {
 /* === Card styles === */
 .weather-fx {
   position: absolute;
-  width: 190px;
+  width: 240px;
   z-index: 58;
   transition: width 0.3s, height 0.3s;
 }
 .weather-fx.is-window {
-  width: 300px;
+  width: 320px;
 }
 
 .wf-toggle {
@@ -318,7 +372,7 @@ onUnmounted(() => {
   border-color: var(--color-primary);
 }
 
-.wf-body { padding: 10px 14px 14px; }
+.wf-body { padding: 10px 12px 12px; }
 .wf-loading { font-size: 0.8rem; color: var(--color-ink-3); text-align: center; padding: 8px 0; }
 .wf-error-state {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -441,6 +495,75 @@ onUnmounted(() => {
   color: var(--color-ink-3);
 }
 .wf-details span:last-child { opacity: 0.68; }
+.wf-forecast-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent);
+}
+.wf-forecast-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin-bottom: 7px;
+  padding: 3px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-ink) 4%, transparent);
+}
+.wf-forecast-tabs button {
+  min-height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-ink-3);
+  cursor: pointer;
+  font: 670 0.58rem/1 var(--font-family);
+}
+.wf-forecast-tabs button.active {
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  color: var(--color-primary-hover);
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.06);
+}
+.wf-section-title {
+  margin-bottom: 6px;
+  color: var(--color-ink-3);
+  font-size: 0.58rem;
+  font-weight: 720;
+  letter-spacing: 0.06em;
+}
+.wf-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.wf-hourly::-webkit-scrollbar { display: none; }
+.wf-hour {
+  min-width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 58%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+  color: var(--color-ink-2);
+  font-size: 0.55rem;
+}
+.wf-hour strong { font-size: 0.62rem; color: var(--color-ink); white-space: nowrap; }
+.wf-hour small { color: var(--status-drink-dark); font-size: 0.52rem; }
+.wf-daily { display: flex; flex-direction: column; gap: 4px; }
+.wf-day {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-ink-2);
+  font-size: 0.6rem;
+}
+.wf-day > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-day strong { color: var(--color-ink); font-size: 0.6rem; font-variant-numeric: tabular-nums; }
 
 /* Dark mode */
 html.dark .wf-toggle { background: rgba(255,255,255,0.1); }
