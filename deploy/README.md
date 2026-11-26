@@ -1,6 +1,7 @@
 # 页巢测试环境部署
 
-测试环境使用 BaoTa + Nginx 托管静态文件。发布入口固定为
+测试环境使用 BaoTa + Nginx 托管静态文件，并通过独立的 Node.js systemd
+服务提供资讯 API。发布入口固定为
 [`deploy.sh`](./deploy.sh)，不要手工复制 `dist` 或直接改线上目录。
 Windows 用户直接运行项目根目录的 [`deploy.ps1`](../deploy.ps1) 即可。
 
@@ -14,6 +15,9 @@ Windows 用户直接运行项目根目录的 [`deploy.ps1`](../deploy.ps1) 即�
 | 目录所有者 | `www:www` |
 | 发布分支 | `test` |
 | 保留版本 | 最近 3 个旧版本 |
+| 资讯 API | `127.0.0.1:8787`，服务名 `daka-news-api` |
+| Node.js | 18 以上；缺失或过旧时安装 Node.js 22 |
+| Nginx 配置 | `/www/server/panel/vhost/nginx/extension/106.55.36.254/daka-news-api.conf` |
 
 Windows 部署入口使用 Git Bash：
 `C:\Program Files\Git\bin\bash.exe`。
@@ -60,12 +64,15 @@ git status
 执行顺序：
 
 1. `npm ci` 安装依赖。
-2. `npm run build` 生成静态文件。
-3. 通过单次 SSH 会话上传到站点目录同级的临时目录。
-4. 用 `sudo -n` 原子切换线上目录，恢复 `www:www` 归属并清理旧版本。
-5. 请求公网地址做健康检查。
+2. `npm run build` 生成静态文件，并把 `server/` 下的资讯 API 一起打包。
+3. 检查服务器 Node.js，低于 18 时通过 NodeSource 安装 Node.js 22。
+4. 上传到站点目录同级的临时目录。
+5. 用 `sudo -n` 原子切换线上目录，恢复 `www:www` 归属并清理旧版本。
+6. 安装并重启 `daka-news-api` systemd 服务。
+7. 写入 BaoTa 的 Nginx extension 配置，检查配置后平滑重载。
+8. 检查首页、`/api/health` 和 `/api/news` 的完整链路。
 
-看到 `Deployed test commit <commit>` 和 `Health check passed` 才算成功。
+看到 `Deployed test commit <commit>` 和 `Health checks passed` 才算成功。
 
 `deploy.ps1` 使用 npm 时对应的命令是 `npm run deploy` 和
 `npm run deploy:dry-run`。dry-run 也会构建，但不会连接服务器或修改线上文件。
@@ -79,5 +86,11 @@ git status
 - 提示 `sudo: a password is required`：服务器未给 `ubuntu` 配置所需的
   `NOPASSWD` 权限，需要由服务器管理员调整后再部署。
 - 健康检查失败：先检查 Nginx 和公网端口，不要跳过健康检查。
+- API 健康检查失败：运行
+  `ssh ubuntu@106.55.36.254 'sudo -n systemctl status daka-news-api --no-pager'`
+  查看 Node 服务状态；Nginx 状态不能代表 Node 服务状态。
+- Nginx 配置未生效：确认 Nginx 实际运行在 BaoTa 中，而不是由 systemd
+  `nginx.service` 管理。脚本直接使用
+  `/www/server/nginx/sbin/nginx -t` 和 `-s reload`。
 
 宝塔面板地址、账号和密码属于服务器凭据，统一保存在密码管理器中，不写入仓库。
