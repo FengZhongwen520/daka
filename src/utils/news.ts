@@ -1,3 +1,5 @@
+import { getItem, setItem } from '../storage'
+
 export interface NewsItem {
   id: string
   title: string
@@ -408,7 +410,7 @@ function sanitizeTabs(value: unknown, savedVersion = CONFIG_VERSION): NewsTabCon
 
 export function readNewsConfig(widgetId?: number): NewsWidgetConfig {
   try {
-    const saved = JSON.parse(localStorage.getItem(configStorageKey(widgetId)) || 'null')
+    const saved = JSON.parse(getItem(configStorageKey(widgetId)) || 'null')
     if (typeof saved?.version === 'number' && saved.version <= CONFIG_VERSION) {
       const tabs = sanitizeTabs(saved.tabs, saved.version)
       if (saved.version < 5 && !tabs.some(tab => tab.categoryId === 'film')) {
@@ -423,7 +425,7 @@ export function readNewsConfig(widgetId?: number): NewsWidgetConfig {
         const activeTabId = tabs.some(tab => tab.id === saved.activeTabId)
           ? saved.activeTabId
           : tabs[0].id
-        localStorage.setItem(configStorageKey(widgetId), JSON.stringify({
+        setItem(configStorageKey(widgetId), JSON.stringify({
           version: CONFIG_VERSION,
           tabs,
           activeTabId,
@@ -440,7 +442,7 @@ export function readNewsConfig(widgetId?: number): NewsWidgetConfig {
 }
 
 export function writeNewsConfig(widgetId: number | undefined, config: NewsWidgetConfig) {
-  localStorage.setItem(configStorageKey(widgetId), JSON.stringify({
+  setItem(configStorageKey(widgetId), JSON.stringify({
     version: CONFIG_VERSION,
     tabs: config.tabs,
     activeTabId: config.activeTabId,

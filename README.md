@@ -55,6 +55,22 @@ npm run dev
 | 组件间 | 每个 widget 实例有唯一 `widgetId`，所有数据 key 包含此 ID |
 | 切换项目 | `watch(selectedProjectId)` → 销毁重建全部组件 |
 
+### 存储模式
+
+所有组件数据都通过 `src/storage` 统一入口读写：
+
+- **本地模式**：默认模式，数据只存在当前浏览器的本地命名空间和 IndexedDB。
+- **云端模式**：登录后从侧边栏“存储”菜单启用，数据保存到 `daka_serve`。
+- 两种模式完全隔离，切换时重新加载，不自动迁移或合并数据。
+
+后端测试和启动方式见 [daka_serve/README.md](daka_serve/README.md)。
+
+```powershell
+npm run serve:dev
+npm run dev
+npm run test:all
+```
+
 ## 全部组件
 
 | 组件 | 说明 |

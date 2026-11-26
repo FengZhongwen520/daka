@@ -23,6 +23,7 @@ import WidgetWrapper from './content_component/WidgetWrapper.vue'
 import ContextMenu from './common/ContextMenu.vue'
 import { useContextMenu } from '../composables/useContextMenu'
 import UiDialog from './common/UiDialog.vue'
+import { getItem, setItem } from '../storage'
 
 // Widget components — lazy loaded per type
 const widgetMap: Record<string, any> = {
@@ -65,7 +66,7 @@ async function initWidgets() {
   if (!selectedProjectId.value) { widgets.value = []; loading.value = false; return }
 
   // Render the cached layout immediately, then reconcile with IndexedDB.
-  const cached = localStorage.getItem(getCacheKey())
+  const cached = getItem(getCacheKey())
   if (cached) {
     try {
       widgets.value = JSON.parse(cached)
@@ -79,7 +80,7 @@ async function initWidgets() {
     zIndex: Number.isInteger(widget.zIndex) ? widget.zIndex! : index + 1,
   }))
   activeWidgetId.value = [...widgets.value].sort((a, b) => (b.zIndex ?? 0) - (a.zIndex ?? 0))[0]?.id ?? null
-  localStorage.setItem(getCacheKey(), JSON.stringify(widgets.value))
+  setItem(getCacheKey(), JSON.stringify(widgets.value))
   loading.value = false
   await nextTick()
   observeWidgetSizes()
@@ -87,7 +88,7 @@ async function initWidgets() {
 }
 
 function updateWidgetCache() {
-  localStorage.setItem(getCacheKey(), JSON.stringify(widgets.value))
+  setItem(getCacheKey(), JSON.stringify(widgets.value))
 }
 
 onMounted(initWidgets)
@@ -214,7 +215,7 @@ async function autoArrangeWidgets() {
   })
 
   arranged.forEach((widget) => {
-    localStorage.setItem(`widget-layout-${widget.id}`, JSON.stringify({ x: widget.x, y: widget.y }))
+    setItem(`widget-layout-${widget.id}`, JSON.stringify({ x: widget.x, y: widget.y }))
   })
   widgets.value = arranged
   layoutVersion.value += 1

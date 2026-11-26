@@ -14,6 +14,7 @@ import {
   type NewsResponse,
   type NewsTabConfig,
 } from '../../utils/news'
+import { getItem, setItem } from '../../storage'
 import DragBar from '../common/DragBar.vue'
 import UiDialog from '../common/UiDialog.vue'
 
@@ -50,7 +51,7 @@ const summaryTooltip = ref<{
 
 function readReadState(): Record<string, string[]> {
   try {
-    const value = JSON.parse(localStorage.getItem(readStateKey) || '{}')
+    const value = JSON.parse(getItem(readStateKey) || '{}')
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
     return Object.fromEntries(
       Object.entries(value)
@@ -188,7 +189,7 @@ function cancelRequest() {
 }
 
 function persistReadState() {
-  localStorage.setItem(readStateKey, JSON.stringify(readIdsByTab.value))
+  setItem(readStateKey, JSON.stringify(readIdsByTab.value))
 }
 
 function tabItems(tab: NewsTabConfig) {
@@ -400,7 +401,7 @@ const sizeKey = `news-size${props.widgetId != null ? '-' + props.widgetId : ''}`
 
 function readCardSize() {
   try {
-    const saved = JSON.parse(localStorage.getItem(sizeKey) || 'null')
+    const saved = JSON.parse(getItem(sizeKey) || 'null')
     return clampSize(
       Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Number(saved?.width) || 392)),
       Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Number(saved?.height) || 464)),
@@ -426,7 +427,7 @@ const displayY = computed(() => {
 })
 
 watch(cardSize, (value) => {
-  localStorage.setItem(sizeKey, JSON.stringify(value))
+  setItem(sizeKey, JSON.stringify(value))
 }, { deep: true })
 
 let resizeState: {

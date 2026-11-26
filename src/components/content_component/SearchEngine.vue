@@ -6,6 +6,7 @@ import { formatTime } from '../../utils/time'
 import DragBar from '../common/DragBar.vue'
 import FaviconImg from '../FaviconImg.vue'
 
+import { getItem, setItem } from '../../storage'
 interface SearchRecord {
   query: string
   engine: string
@@ -36,7 +37,7 @@ const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: num
 const sk = `se${props.widgetId != null ? '-' + props.widgetId : ''}`
 
 // Load persisted state
-const savedDefault = localStorage.getItem(`${sk}-default-engine`)
+const savedDefault = getItem(`${sk}-default-engine`)
 const defaultEngine = ref(savedDefault && engineMap[savedDefault] ? savedDefault : 'baidu')
 const currentEngine = ref(defaultEngine.value)
 
@@ -69,7 +70,7 @@ function keepHistoryOpen() {
 function setDefaultEngine(id: string) {
   defaultEngine.value = id
   currentEngine.value = id
-  localStorage.setItem(`${sk}-default-engine`, id)
+  setItem(`${sk}-default-engine`, id)
 }
 
 function selectEngine(id: string) {

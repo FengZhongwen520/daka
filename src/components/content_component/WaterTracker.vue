@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 const DAILY_TARGET = 2000 // ml
 const DRINK_AMOUNT = 250   // ml per click
 const IDLE_WARN_MIN = 60   // turn yellow after 60 min no drink
@@ -18,14 +19,14 @@ function dateStr(d: Date) {
 // Load today's data
 const today = ref(dateStr(new Date()))
 const waterKey = computed(() => `water-${today.value}${props.widgetId != null ? '-' + props.widgetId : ''}`)
-const saved = JSON.parse(localStorage.getItem(waterKey.value) || 'null')
+const saved = JSON.parse(getItem(waterKey.value) || 'null')
 const dailyTotal = ref(saved?.total ?? 0)
 const lastDrinkTime = ref(saved?.lastDrink ?? 0)
 const lastNotifyTime = ref(saved?.lastNotify ?? 0)
 const now = ref(Date.now())
 
 function save() {
-  localStorage.setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value, lastNotify: lastNotifyTime.value }))
+  setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value, lastNotify: lastNotifyTime.value }))
 }
 
 function rolloverIfNewDay() {

@@ -1,0 +1,24 @@
+[Unit]
+Description=Daka Serve encrypted storage API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/MyFront/daka_serve
+EnvironmentFile=/www/wwwroot/MyFront/daka_serve/daka-serve.env
+ExecStart=/usr/bin/java -Xms128m -Xmx512m -jar /www/wwwroot/MyFront/daka_serve/daka-serve.jar
+Restart=on-failure
+RestartSec=3
+SuccessExitStatus=143
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/www/wwwroot/MyFront/daka_serve/data
+
+[Install]
+WantedBy=multi-user.target

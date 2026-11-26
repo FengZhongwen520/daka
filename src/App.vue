@@ -3,6 +3,7 @@ import { defineAsyncComponent, ref, provide, onMounted } from 'vue'
 import AppSidebar from './components/AppSidebar.vue'
 import AppCalendar from './components/AppContent.vue'
 import FeedbackHost from './components/common/FeedbackHost.vue'
+import { getItem, setItem } from './storage'
 
 const AppModal = defineAsyncComponent(() => import('./components/AppModal.vue'))
 const WelcomeDialog = defineAsyncComponent(() => import('./components/WelcomeDialog.vue'))
@@ -31,9 +32,9 @@ provide('closeModal', closeModal)
 const showWelcome = ref(false)
 
 onMounted(() => {
-  if (!localStorage.getItem('dake-welcomed')) {
+  if (!getItem('dake-welcomed')) {
     showWelcome.value = true
-    localStorage.setItem('dake-welcomed', '1')
+    setItem('dake-welcomed', '1')
   }
 })
 

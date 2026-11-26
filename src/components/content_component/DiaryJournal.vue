@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { db } from '../../db'
+import { deleteDiaryEntry, getDiaryEntries, getDiaryEntry, saveDiaryEntry } from '../../db'
+import { getItem, setItem } from '../../storage'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import type { DiaryEntry } from '../../types'
 import { todayStr } from '../../utils/date'
@@ -42,14 +43,14 @@ const { x, y, onDragStart } = useWidgetDrag(props, posKey, 440, 180)
 
 function readWidgetTitle() {
   try {
-    return JSON.parse(localStorage.getItem(widgetTitleKey) || 'null') || '📔 日记'
+    return JSON.parse(getItem(widgetTitleKey) || 'null') || '📔 日记'
   } catch {
     return '📔 日记'
   }
 }
 
 const widgetTitle = ref(readWidgetTitle())
-watch(widgetTitle, value => localStorage.setItem(widgetTitleKey, JSON.stringify(value)))
+watch(widgetTitle, value => setItem(widgetTitleKey, JSON.stringify(value)))
 
 const entries = ref<DiaryEntry[]>([])
 const selectedDate = ref(todayStr())
@@ -206,7 +207,7 @@ function formatEntryDate(value: string) {
 }
 
 async function loadAllEntries() {
-  entries.value = await db.diaryEntries.where('widgetId').equals(widgetId).toArray()
+  entries.value = await getDiaryEntries(widgetId)
   entries.value.sort((a, b) => (
     b.date.localeCompare(a.date)
     || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -216,10 +217,7 @@ async function loadAllEntries() {
 async function loadDate(value: string) {
   const token = ++loadToken
   ignoreAutosave = true
-  const stored = await db.diaryEntries
-    .where('[widgetId+date]')
-    .equals([widgetId, value])
-    .first()
+  const stored = await getDiaryEntry(widgetId, value)
   if (token !== loadToken || selectedDate.value !== value) return
 
   currentEntryId.value = stored?.id
@@ -278,25 +276,13 @@ async function persistCurrentEntry() {
   dirty = false
   saveState.value = 'saving'
   const hasValue = Boolean(snapshot.title || snapshot.content.trim() || snapshot.mood || snapshot.tags.length)
-  const existing = await db.diaryEntries
-    .where('[widgetId+date]')
-    .equals([widgetId, snapshot.date])
-    .first()
-
   if (!hasValue) {
-    if (existing?.id != null) await db.diaryEntries.delete(existing.id)
+    if (currentEntryId.value != null) await deleteDiaryEntry(currentEntryId.value)
     if (selectedDate.value === snapshot.date) currentEntryId.value = undefined
-  } else if (existing?.id != null) {
-    await db.diaryEntries.update(existing.id, {
-      ...snapshot,
-      updatedAt: new Date(),
-    })
   } else {
-    const id = await db.diaryEntries.add({
+    const id = await saveDiaryEntry(undefined, {
       widgetId,
       ...snapshot,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     })
     if (selectedDate.value === snapshot.date) currentEntryId.value = id
   }
@@ -421,7 +407,7 @@ async function deleteCurrentEntry() {
     return
   }
   if (!window.confirm('删除这一天的日记？此操作不可恢复。')) return
-  if (currentEntryId.value != null) await db.diaryEntries.delete(currentEntryId.value)
+  if (currentEntryId.value != null) await deleteDiaryEntry(currentEntryId.value)
   ignoreAutosave = true
   currentEntryId.value = undefined
   entryTitle.value = ''

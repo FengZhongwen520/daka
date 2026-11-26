@@ -12,13 +12,23 @@ import {
   requestLayoutArrangement,
   type ThemeMode,
 } from '../store'
-import { getProjects, deleteProject, updateProject } from '../db'
+import { clearAllData, getProjects, deleteProject, updateProject } from '../db'
 import { handleExport, handleImport } from '../utils/io'
 import { refreshWeather, weatherError } from '../utils/weather'
-import { db } from '../db'
 import type { Project } from '../types'
 import SidebarIcon from './common/SidebarIcon.vue'
 import { askConfirm, notify } from '../utils/feedback'
+import { getItem, removeItem } from '../storage'
+import {
+  cloudUser,
+  loginCloud,
+  logoutCloud,
+  registerCloud,
+  storageBusy,
+  storageError,
+  storageMode,
+  switchStorageMode,
+} from '../storage'
 
 const openAddModal = inject<() => void>('openAddModal')!
 const showModal = inject<Ref<boolean>>('showModal')!
@@ -28,6 +38,10 @@ const projects = ref<Project[]>([])
 const fileInput = ref<HTMLInputElement>()
 const collapsed = ref(true)
 const activeModule = ref('')
+const authMode = ref<'login' | 'register'>('login')
+const cloudLoginId = ref('')
+const cloudPassword = ref('')
+const authError = ref('')
 let weatherTimer: ReturnType<typeof setInterval> | null = null
 
 const currentProject = computed(() => projects.value.find(p => p.id === selectedProjectId.value))
@@ -48,7 +62,7 @@ async function loadProjects() {
   // Auto-expand sidebar if no projects
   if (projects.value.length === 0) collapsed.value = false
   // Restore last-used project, or fallback to first
-  const saved = localStorage.getItem('last-project')
+  const saved = getItem('last-project')
   const lastId = saved ? parseInt(saved) : 0
   if (lastId && projects.value.some(p => p.id === lastId)) {
     selectProject(lastId)
@@ -80,28 +94,60 @@ function onAddClick() {
 }
 
 function openWelcome() {
-  localStorage.removeItem('dake-welcomed')
+  removeItem('dake-welcomed')
   location.reload()
 }
 
 async function onClearData() {
   try {
     const confirmed = await askConfirm(
-      '⚠️ 将清除当前项目所有数据及 IndexedDB 全部记录，数据将彻底丢失且不可恢复！确定继续？',
+      `⚠️ 将清除当前“${storageMode.value === 'cloud' ? '云端' : '本地'}”存储中的全部数据，且不可恢复！确定继续？`,
       '危险操作',
       { confirmText: '我已知晓，确定清除', danger: true },
     )
     if (!confirmed) return
-    // Clear ALL IndexedDB data
-    await Promise.all([
-      db.projects.clear(), db.checkins.clear(), db.photos.clear(),
-      db.memos.clear(), db.diaryEntries.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
-    ])
-    // Clear all localStorage
-    localStorage.clear()
-    notify('全部数据已清除', 'success')
+    await clearAllData()
+    notify(`${storageMode.value === 'cloud' ? '云端' : '本地'}数据已清除`, 'success')
     location.reload()
   } catch { /* cancelled */ }
+}
+
+async function submitCloudAuth() {
+  authError.value = ''
+  const loginId = cloudLoginId.value.trim()
+  if (!loginId || !cloudPassword.value) {
+    authError.value = '请输入账号和密码'
+    return
+  }
+  try {
+    if (authMode.value === 'register') {
+      await registerCloud(loginId, cloudPassword.value)
+    } else {
+      await loginCloud(loginId, cloudPassword.value)
+    }
+    location.reload()
+  } catch (reason) {
+    authError.value = reason instanceof Error ? reason.message : '登录失败'
+  }
+}
+
+async function applyStorageMode(mode: 'local' | 'cloud') {
+  authError.value = ''
+  try {
+    await switchStorageMode(mode)
+    location.reload()
+  } catch (reason) {
+    authError.value = reason instanceof Error ? reason.message : '切换存储模式失败'
+  }
+}
+
+async function onCloudLogout() {
+  try {
+    await logoutCloud()
+    location.reload()
+  } catch (reason) {
+    authError.value = reason instanceof Error ? reason.message : '退出登录失败'
+  }
 }
 
 const wallpaperInput = ref<HTMLInputElement>()
@@ -277,6 +323,81 @@ watch(showModal, async (visible) => {
         </div>
       </div>
 
+      <!-- Storage mode -->
+      <div class="menu-item-wrap">
+        <div class="sidebar-menu-item" :class="{ active: activeModule === 'storage' }" @click="toggleModule('storage')">
+          <span class="menu-icon"><SidebarIcon name="storage" /></span>
+          <span class="menu-label">存储</span>
+          <span class="theme-current">{{ storageMode === 'cloud' ? '云端' : '本地' }}</span>
+        </div>
+        <div v-if="activeModule === 'storage'" class="sidebar-bubble storage-bubble">
+          <div class="storage-mode-row">
+            <div>
+              <strong>{{ storageMode === 'cloud' ? '云端存储' : '本地存储' }}</strong>
+              <small>{{ storageMode === 'cloud' ? '登录账号 · 服务端加密' : '仅当前浏览器' }}</small>
+            </div>
+            <span class="storage-mode-dot" :class="storageMode" />
+          </div>
+
+          <template v-if="cloudUser">
+            <p class="storage-account">已登录：{{ cloudUser.loginId }}</p>
+            <div class="storage-actions">
+              <button
+                type="button"
+                class="ui-button ui-button-small"
+                :class="{ 'ui-button-primary': storageMode === 'local' }"
+                :disabled="storageBusy || storageMode === 'local'"
+                @click="applyStorageMode('local')"
+              >本地</button>
+              <button
+                type="button"
+                class="ui-button ui-button-small"
+                :class="{ 'ui-button-primary': storageMode === 'cloud' }"
+                :disabled="storageBusy || storageMode === 'cloud'"
+                @click="applyStorageMode('cloud')"
+              >云端</button>
+            </div>
+            <p class="storage-note">两种存储完全隔离，切换不会自动迁移或合并数据。</p>
+            <button type="button" class="sidebar-text-btn" :disabled="storageBusy" @click="onCloudLogout">退出登录</button>
+          </template>
+
+          <template v-else>
+            <p class="storage-note">登录后才会解锁云端模式。云端数据在服务端加密保存。</p>
+            <form class="storage-auth-form" @submit.prevent="submitCloudAuth">
+              <input
+                v-model="cloudLoginId"
+                class="ui-input"
+                type="text"
+                autocomplete="username"
+                maxlength="64"
+                placeholder="账号"
+              />
+              <input
+                v-model="cloudPassword"
+                class="ui-input"
+                type="password"
+                :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'"
+                minlength="8"
+                maxlength="128"
+                placeholder="密码（至少 8 位）"
+              />
+              <button type="submit" class="ui-button ui-button-small ui-button-primary btn-block" :disabled="storageBusy">
+                {{ storageBusy ? '处理中…' : authMode === 'register' ? '注册并启用云端' : '登录云端' }}
+              </button>
+            </form>
+            <button
+              type="button"
+              class="sidebar-text-btn storage-auth-switch"
+              @click="authMode = authMode === 'login' ? 'register' : 'login'; authError = ''"
+            >
+              {{ authMode === 'login' ? '没有账号？注册' : '已有账号？登录' }}
+            </button>
+          </template>
+
+          <p v-if="authError || storageError" class="storage-error">{{ authError || storageError }}</p>
+        </div>
+      </div>
+
       <!-- Wallpaper -->
       <div class="menu-item-wrap">
         <div class="sidebar-menu-item" :class="{ active: activeModule === 'wallpaper' }" @click="toggleModule('wallpaper')">
@@ -436,6 +557,79 @@ watch(showModal, async (visible) => {
 </template>
 
 <style scoped>
+.storage-bubble {
+  min-width: 236px;
+}
+.storage-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.storage-mode-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.storage-mode-row strong {
+  color: var(--color-ink);
+  font-size: 0.74rem;
+}
+.storage-mode-row small,
+.storage-account,
+.storage-note {
+  color: var(--color-ink-3);
+  font-size: 0.62rem;
+  line-height: 1.45;
+}
+.storage-mode-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--color-ink-3);
+}
+.storage-mode-dot.cloud {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+.storage-account {
+  margin: 9px 0 7px;
+  overflow: hidden;
+  color: var(--color-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.storage-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.storage-note {
+  margin: 9px 0;
+}
+.storage-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.storage-auth-form .ui-input {
+  height: 30px;
+  font-size: 0.68rem;
+}
+.storage-auth-switch {
+  display: block;
+  margin: 8px auto 0;
+}
+.storage-error {
+  margin-top: 8px;
+  color: var(--color-danger);
+  font-size: 0.62rem;
+  line-height: 1.45;
+}
+
 .app-sidebar {
   width: var(--sidebar-width); background: var(--color-surface-soft);
   border-right: 1px solid var(--color-border);

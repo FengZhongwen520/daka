@@ -8,6 +8,7 @@ import DragBar from '../common/DragBar.vue'
 import type { Project } from '../../types'
 import type { CalendarDay } from '../../utils/date'
 
+import { getItem, setItem } from '../../storage'
 const MONTHS_ZH = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
 const WEEKDAYS_ZH = ['日','一','二','三','四','五','六']
 const WEEKDAYS_FULL = ['周日','周一','周二','周三','周四','周五','周六']
@@ -130,20 +131,20 @@ function buildCalendarDays(year: number, month: number): CalDay[] {
 const checkinKey = computed(() => `cal-checkins-${props.widgetId ?? 'default'}`)
 
 function loadLocalCheckIns() {
-  const saved = JSON.parse(localStorage.getItem(checkinKey.value) || '[]')
+  const saved = JSON.parse(getItem(checkinKey.value) || '[]')
   const prefix = `${currentYear.value}-${String(currentMonth.value).padStart(2, '0')}`
   checkedDates.value = new Set(saved.filter((d: string) => d.startsWith(prefix)))
 }
 
 function saveLocalCheckIn(date: string, checked: boolean) {
-  const saved = JSON.parse(localStorage.getItem(checkinKey.value) || '[]')
+  const saved = JSON.parse(getItem(checkinKey.value) || '[]')
   if (checked) {
     if (!saved.includes(date)) saved.push(date)
   } else {
     const idx = saved.indexOf(date)
     if (idx >= 0) saved.splice(idx, 1)
   }
-  localStorage.setItem(checkinKey.value, JSON.stringify(saved))
+  setItem(checkinKey.value, JSON.stringify(saved))
 }
 
 async function loadCheckIns() {
@@ -199,12 +200,12 @@ interface CalEvent {
 const eventsKey = `cal-events-${props.widgetId ?? 'default'}`
 let parsedEvents: Record<string, CalEvent[]> | null = null
 try {
-  const raw = localStorage.getItem(eventsKey)
+  const raw = getItem(eventsKey)
   parsedEvents = raw ? JSON.parse(raw) : null
 } catch { /* 忽略损坏数据 */ }
 const eventsByDate = ref<Record<string, CalEvent[]>>(parsedEvents ?? {})
 let eventNextId = Math.max(0, ...Object.values(eventsByDate.value).flat().map(e => e.id)) + 1
-watch(eventsByDate, (v) => localStorage.setItem(eventsKey, JSON.stringify(v)), { deep: true })
+watch(eventsByDate, (v) => setItem(eventsKey, JSON.stringify(v)), { deep: true })
 
 function eventsFor(date: string): CalEvent[] {
   return eventsByDate.value[date] ?? []

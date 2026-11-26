@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch, onUnmounted } from 'vue'
-import { db } from '../../db'
+import { getPhotos, savePhotos } from '../../db'
+import { getItem, removeItem, setItem } from '../../storage'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import { usePhotoCropGeometry } from '../../composables/usePhotoCropGeometry'
 import DragBar from '../common/DragBar.vue'
@@ -20,7 +21,7 @@ const { x, y, onDragStart } = useWidgetDrag(
 
 // Frame size
 const sizeKey = `photo-frame-size-${uid}`
-const savedSize = JSON.parse(localStorage.getItem(sizeKey) || 'null')
+const savedSize = JSON.parse(getItem(sizeKey) || 'null')
 const frameWidth = ref(Number(savedSize?.width) || 190)
 const frameHeight = ref(Number(savedSize?.height) || 238)
 const frameStyle = computed(() => ({
@@ -28,7 +29,7 @@ const frameStyle = computed(() => ({
   height: `${frameHeight.value}px`,
 }))
 watch([frameWidth, frameHeight], () => {
-  localStorage.setItem(sizeKey, JSON.stringify({
+  setItem(sizeKey, JSON.stringify({
     width: frameWidth.value,
     height: frameHeight.value,
   }))
@@ -37,7 +38,7 @@ watch([frameWidth, frameHeight], () => {
 interface PhotoView { x: number; y: number; zoom: number }
 
 const viewKey = `photo-frame-views-${uid}`
-const savedViews = JSON.parse(localStorage.getItem(viewKey) || '{}') as Record<string, PhotoView>
+const savedViews = JSON.parse(getItem(viewKey) || '{}') as Record<string, PhotoView>
 const photoViews = ref<Record<string, PhotoView>>(savedViews)
 const panX = ref(50)
 const panY = ref(50)
@@ -74,7 +75,7 @@ function persistCurrentView() {
       zoom: zoom.value,
     },
   }
-  localStorage.setItem(viewKey, JSON.stringify(photoViews.value))
+  setItem(viewKey, JSON.stringify(photoViews.value))
 }
 
 function openCropEditor() {
@@ -103,17 +104,13 @@ let slideTimer: ReturnType<typeof setInterval> | null = null
 const fileRef = ref<HTMLInputElement>()
 
 onMounted(async () => {
-  const rows = await db.photos.where('position').equals(dbKey).toArray()
-  photos.value = rows.map(r => r.dataUrl).filter(Boolean)
+  photos.value = await getPhotos(dbKey)
   loadCurrentView()
   if (photos.value.length > 1) startSlide()
 })
 
 async function saveAll() {
-  await db.photos.where('position').equals(dbKey).delete()
-  for (const url of photos.value) {
-    await db.photos.add({ position: dbKey as any, dataUrl: url, createdAt: new Date() })
-  }
+  await savePhotos(dbKey, photos.value)
 }
 
 function startSlide() {
@@ -198,7 +195,7 @@ async function onFilesChange(e: Event) {
 async function removeCurrent() {
   if (photos.value.length > 1) {
     photoViews.value = {}
-    localStorage.removeItem(viewKey)
+    removeItem(viewKey)
     photos.value.splice(currentIndex.value, 1)
     if (currentIndex.value >= photos.value.length) currentIndex.value = photos.value.length - 1
     await saveAll()
@@ -207,7 +204,7 @@ async function removeCurrent() {
   } else {
     photos.value = []
     photoViews.value = {}
-    localStorage.removeItem(viewKey)
+    removeItem(viewKey)
     await saveAll()
     clearInterval(slideTimer!)
   }

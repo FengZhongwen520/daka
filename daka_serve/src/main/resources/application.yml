@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: daka_serve
+  datasource:
+    url: ${DAKA_DB_URL:jdbc:h2:file:./data/daka-serve;MODE=PostgreSQL;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${DAKA_DB_USERNAME:sa}
+    password: ${DAKA_DB_PASSWORD:}
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  servlet:
+    multipart:
+      max-request-size: 20MB
+      max-file-size: 20MB
+
+server:
+  port: ${DAKA_SERVER_PORT:8080}
+  address: ${DAKA_SERVER_ADDRESS:127.0.0.1}
+
+daka:
+  security:
+    encryption-key: ${DAKA_ENCRYPTION_KEY:}
+    lookup-pepper: ${DAKA_LOOKUP_PEPPER:}
+    session-days: ${DAKA_SESSION_DAYS:30}
+  cors:
+    allowed-origins: ${DAKA_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  storage:
+    max-value-bytes: ${DAKA_STORAGE_MAX_VALUE_BYTES:12582912}

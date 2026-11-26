@@ -8,6 +8,9 @@
     "news-api": "node server/news-api.mjs",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
+    "serve:dev": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File daka_serve/run-dev.ps1",
+    "test:serve": "mvn -f daka_serve/pom.xml test",
+    "test:all": "npm run build && npm run test:serve",
     "deploy": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File deploy.ps1",
     "deploy:dry-run": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File deploy.ps1 -DryRun"
   },

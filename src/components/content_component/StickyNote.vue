@@ -3,12 +3,13 @@ import { ref, watch } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
 // Load saved text
 const textKey = `sticky-text${props.widgetId != null ? '-' + props.widgetId : ''}`
-const text = ref(localStorage.getItem(textKey) || '')
-watch(text, (v) => localStorage.setItem(textKey, v))
+const text = ref(getItem(textKey) || '')
+watch(text, (v) => setItem(textKey, v))
 
 // Position
 const posKey = `sticky-pos${props.widgetId != null ? '-' + props.widgetId : ''}`

@@ -3,11 +3,12 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 type ClockMode = 'digital' | 'analog'
 
-const savedMode = localStorage.getItem('clock-mode') as ClockMode | null
+const savedMode = getItem('clock-mode') as ClockMode | null
 const mode = ref<ClockMode>(savedMode === 'digital' || savedMode === 'analog' ? savedMode : 'digital')
-watch(mode, (v) => localStorage.setItem('clock-mode', v))
+watch(mode, (v) => setItem('clock-mode', v))
 
 const now = ref(new Date())
 
@@ -48,9 +49,9 @@ function toggleMode() {
 }
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem('clock-title') || 'null')
+const savedTitle = JSON.parse(getItem('clock-title') || 'null')
 const title = ref(savedTitle ?? '🕐 时钟')
-watch(title, (v) => localStorage.setItem('clock-title', JSON.stringify(v)))
+watch(title, (v) => setItem('clock-title', JSON.stringify(v)))
 
 // Drag
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()

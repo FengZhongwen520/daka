@@ -1,10 +1,11 @@
 import { ref, watch } from 'vue'
+import { getItem, setItem } from '../storage'
 
 const now = new Date()
 
 export const selectedProjectId = ref<number | null>(null)
 // Restore last project on module load
-const lastId = localStorage.getItem('last-project')
+const lastId = getItem('last-project')
 if (lastId) selectedProjectId.value = parseInt(lastId) || null
 export const currentYear = ref(now.getFullYear())
 export const currentMonth = ref(now.getMonth() + 1)
@@ -34,16 +35,16 @@ export const weatherLocationSource = ref<'manual' | 'geolocation' | 'timezone' |
 export const weatherLocationAccuracy = ref<number | null>(null)
 
 // Wallpaper
-export const weatherWallpaper = ref(localStorage.getItem('weather-wallpaper') !== 'false')
+export const weatherWallpaper = ref(getItem('weather-wallpaper') !== 'false')
 export const customWallpaper = ref('')
 
 watch(weatherWallpaper, (v) => {
-  localStorage.setItem('weather-wallpaper', String(v))
+  setItem('weather-wallpaper', String(v))
 })
 
 function readBoolean(key: string, fallback: boolean): boolean {
   try {
-    const stored = localStorage.getItem(key)
+    const stored = getItem(key)
     if (stored === 'true') return true
     if (stored === 'false') return false
   } catch {
@@ -54,7 +55,7 @@ function readBoolean(key: string, fallback: boolean): boolean {
 
 function readGlassOpacity(): number {
   try {
-    const raw = localStorage.getItem('daka-glass-opacity')
+    const raw = getItem('daka-glass-opacity')
     if (raw == null) return 0.42
     const stored = Number(raw)
     if (Number.isFinite(stored)) return Math.min(0.8, Math.max(0.24, stored))
@@ -70,10 +71,10 @@ export const showLayoutGrid = ref(readBoolean('daka-show-layout-grid', false))
 export const glassOpacity = ref(readGlassOpacity())
 export const layoutArrangementRequest = ref(0)
 
-watch(snapToGrid, value => localStorage.setItem('daka-snap-to-grid', String(value)))
-watch(showLayoutGrid, value => localStorage.setItem('daka-show-layout-grid', String(value)))
+watch(snapToGrid, value => setItem('daka-snap-to-grid', String(value)))
+watch(showLayoutGrid, value => setItem('daka-show-layout-grid', String(value)))
 watch(glassOpacity, (value) => {
-  localStorage.setItem('daka-glass-opacity', String(value))
+  setItem('daka-glass-opacity', String(value))
   document.documentElement.style.setProperty('--widget-glass-alpha', String(value))
 }, { immediate: true })
 
@@ -87,7 +88,7 @@ export type ResolvedTheme = Exclude<ThemeMode, 'system'>
 
 function readThemeMode(): ThemeMode {
   try {
-    const stored = localStorage.getItem('theme-mode')
+    const stored = getItem('theme-mode')
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
     // Storage can be unavailable in restrictive browser modes.
@@ -110,7 +111,7 @@ function syncTheme() {
 
 watch(themeMode, (mode) => {
   try {
-    localStorage.setItem('theme-mode', mode)
+    setItem('theme-mode', mode)
   } catch {
     // The selected theme still applies for the current session.
   }
@@ -123,7 +124,7 @@ systemThemeQuery.addEventListener('change', () => {
 
 export function selectProject(id: number) {
   selectedProjectId.value = id
-  localStorage.setItem('last-project', String(id))
+  setItem('last-project', String(id))
 }
 
 export function navigateMonth(delta: number) {

@@ -3,11 +3,12 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 
 // Settings — with widgetId isolation
 const settingsKey = `pomodoro-settings${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedSettings = JSON.parse(localStorage.getItem(settingsKey) || 'null')
+const savedSettings = JSON.parse(getItem(settingsKey) || 'null')
 const focusMin = ref(savedSettings?.focus ?? 25)
 const breakMin = ref(savedSettings?.break ?? 5)
 const showSettings = ref(false)
@@ -17,7 +18,7 @@ const breakSec = computed(() => breakMin.value * 60)
 
 // Persistent running state — restored on refresh
 const stateKey = `pomodoro-state${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedState = JSON.parse(localStorage.getItem(stateKey) || 'null')
+const savedState = JSON.parse(getItem(stateKey) || 'null')
 
 const mode = ref<'focus' | 'break'>(savedState?.mode === 'break' ? 'break' : 'focus')
 let initRemaining = savedState?.remaining ?? focusSec.value
@@ -48,7 +49,7 @@ const progress = computed(() => total.value > 0 ? 1 - remaining.value / total.va
 const circumference = 2 * Math.PI * 70
 
 function saveSettings() {
-  localStorage.setItem(settingsKey, JSON.stringify({ focus: focusMin.value, break: breakMin.value }))
+  setItem(settingsKey, JSON.stringify({ focus: focusMin.value, break: breakMin.value }))
   if (mode.value === 'focus') remaining.value = focusSec.value
   else remaining.value = breakSec.value
   showSettings.value = false
@@ -69,7 +70,7 @@ function handleDragStart(e: MouseEvent) {
 }
 
 function saveState() {
-  localStorage.setItem(stateKey, JSON.stringify({
+  setItem(stateKey, JSON.stringify({
     mode: mode.value,
     running: running.value,
     deadline: running.value ? deadline.value : 0,
@@ -78,8 +79,8 @@ function saveState() {
 }
 
 // Desktop notifications — fire even when the tab is in the background
-const notificationsEnabled = ref(localStorage.getItem('pomodoro-notify') !== 'false')
-watch(notificationsEnabled, (v) => localStorage.setItem('pomodoro-notify', String(v)))
+const notificationsEnabled = ref(getItem('pomodoro-notify') !== 'false')
+watch(notificationsEnabled, (v) => setItem('pomodoro-notify', String(v)))
 
 async function ensureNotifyPermission() {
   if (!notificationsEnabled.value) return

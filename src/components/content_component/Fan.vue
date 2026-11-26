@@ -3,14 +3,15 @@ import { ref, watch, computed } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const stateKey = `fan-state${props.widgetId != null ? '-' + props.widgetId : ''}`
 
 // Power & speed — persisted
-const savedState = JSON.parse(localStorage.getItem(stateKey) || 'null')
+const savedState = JSON.parse(getItem(stateKey) || 'null')
 const powered = ref(savedState?.powered ?? true)
 const speed = ref(savedState?.speed ?? 2)
-watch([powered, speed], () => localStorage.setItem(stateKey, JSON.stringify({ powered: powered.value, speed: speed.value })))
+watch([powered, speed], () => setItem(stateKey, JSON.stringify({ powered: powered.value, speed: speed.value })))
 
 const speeds = [
   { level: 1, label: '1', bladeDuration: 1.0, oscDuration: 5.0 },
@@ -21,18 +22,18 @@ const speeds = [
 const currentSpeed = computed(() => speeds[speed.value - 1])
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem('fan-title') || 'null')
+const savedTitle = JSON.parse(getItem('fan-title') || 'null')
 const title = ref(savedTitle ?? '🌀 电风扇')
-watch(title, (v) => localStorage.setItem('fan-title', JSON.stringify(v)))
+watch(title, (v) => setItem('fan-title', JSON.stringify(v)))
 
 // Drag
 const posKey = `fan-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const { x, y, onDragStart } = useWidgetDrag(props, posKey, 600, 120, false)
 
 // Persist speed
-const savedSpeed = localStorage.getItem('fan-speed')
+const savedSpeed = getItem('fan-speed')
 if (savedSpeed) speed.value = Number(savedSpeed) || 2
-watch(speed, (v) => localStorage.setItem('fan-speed', String(v)))
+watch(speed, (v) => setItem('fan-speed', String(v)))
 </script>
 
 <template>

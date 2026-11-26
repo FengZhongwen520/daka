@@ -3,6 +3,7 @@ import { nextTick, onMounted, onUnmounted, ref, watch, computed } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 type TodoStatus = 'todo' | 'doing' | 'done'
 
 interface TodoItem {
@@ -35,12 +36,12 @@ const DEFAULT_ITEMS: TodoItem[] = [
 ]
 let parsedItems: TodoItem[] | null = null
 try {
-  const raw = localStorage.getItem(itemsKey)
+  const raw = getItem(itemsKey)
   parsedItems = raw ? JSON.parse(raw) : null
 } catch { /* 忽略损坏数据 */ }
 let parsedGroups: TodoGroup[] = []
 try {
-  const raw = localStorage.getItem(groupsKey)
+  const raw = getItem(groupsKey)
   parsedGroups = raw ? JSON.parse(raw) : []
 } catch { /* 忽略损坏数据 */ }
 
@@ -73,17 +74,17 @@ const items = ref<TodoItem[]>(initialItems)
 const groups = ref<TodoGroup[]>(initialGroups)
 let nextId = items.value.reduce((m, i) => Math.max(m, i.id), 0) + 1
 let nextGroupId = groups.value.reduce((m, group) => Math.max(m, group.id), 0) + 1
-watch(items, (v) => localStorage.setItem(itemsKey, JSON.stringify(v)), { deep: true })
-watch(groups, (v) => localStorage.setItem(groupsKey, JSON.stringify(v)), { deep: true })
-if (initialGroups.length > 0 && !localStorage.getItem(groupsKey)) {
-  localStorage.setItem(groupsKey, JSON.stringify(initialGroups))
-  localStorage.setItem(itemsKey, JSON.stringify(initialItems))
+watch(items, (v) => setItem(itemsKey, JSON.stringify(v)), { deep: true })
+watch(groups, (v) => setItem(groupsKey, JSON.stringify(v)), { deep: true })
+if (initialGroups.length > 0 && !getItem(groupsKey)) {
+  setItem(groupsKey, JSON.stringify(initialGroups))
+  setItem(itemsKey, JSON.stringify(initialItems))
 }
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem(titleKey) || 'null')
+const savedTitle = JSON.parse(getItem(titleKey) || 'null')
 const title = ref(savedTitle ?? '✅ 待办')
-watch(title, (v) => localStorage.setItem(titleKey, JSON.stringify(v)))
+watch(title, (v) => setItem(titleKey, JSON.stringify(v)))
 
 const statusLabel: Record<TodoStatus, string> = {
   todo: '待办',
@@ -501,7 +502,7 @@ const RESIZE_STEP = 8
 
 function readCardSize() {
   try {
-    const saved = JSON.parse(localStorage.getItem(sizeKey) || 'null')
+    const saved = JSON.parse(getItem(sizeKey) || 'null')
     return {
       width: Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Number(saved?.width) || 240)),
       height: Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, Number(saved?.height) || 248)),
@@ -527,7 +528,7 @@ const displayY = computed(() => {
 })
 
 watch(cardSize, value => {
-  localStorage.setItem(sizeKey, JSON.stringify(value))
+  setItem(sizeKey, JSON.stringify(value))
 }, { deep: true })
 
 let resizeState: {

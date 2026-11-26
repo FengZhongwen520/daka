@@ -3,6 +3,7 @@ import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { removeItem } from '../../storage'
 const input = ref('')
 const result = ref('')
 const inputRef = ref<HTMLInputElement>()
@@ -13,7 +14,7 @@ let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const legacyHistoryKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
-localStorage.removeItem(legacyHistoryKey)
+removeItem(legacyHistoryKey)
 
 // Auto-calculate: = or Enter → history, edit after result → preview only
 watch(input, (val) => {

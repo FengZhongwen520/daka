@@ -2,6 +2,7 @@ import { watch } from 'vue'
 import { useDraggable } from './useDraggable'
 import { updateWidgetPos } from '../db'
 import { snapToGrid } from '../store'
+import { getItem, setItem } from '../storage'
 
 /**
  * 组合 useDraggable + 位置持久化（localStorage + IndexedDB）
@@ -16,8 +17,8 @@ export function useWidgetDrag(
 ) {
   const layoutKey = props.widgetId != null ? `widget-layout-${props.widgetId}` : ''
   const savedPos = JSON.parse(
-    localStorage.getItem(layoutKey || posKey)
-    || localStorage.getItem(posKey)
+    getItem(layoutKey || posKey)
+    || getItem(posKey)
     || 'null',
   )
   const { x, y, onDragStart } = useDraggable(
@@ -27,9 +28,9 @@ export function useWidgetDrag(
   )
 
   watch([x, y], () => {
-    localStorage.setItem(posKey, JSON.stringify({ x: x.value, y: y.value }))
+    setItem(posKey, JSON.stringify({ x: x.value, y: y.value }))
     if (layoutKey) {
-      localStorage.setItem(layoutKey, JSON.stringify({ x: x.value, y: y.value }))
+      setItem(layoutKey, JSON.stringify({ x: x.value, y: y.value }))
     }
     if (syncToDB && props.widgetId != null) {
       updateWidgetPos(props.widgetId!, x.value, y.value)

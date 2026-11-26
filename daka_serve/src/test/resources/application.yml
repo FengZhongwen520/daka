@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:daka-test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+
+daka:
+  security:
+    encryption-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    lookup-pepper: ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=
+    session-days: 30
+  cors:
+    allowed-origins: http://localhost:5173
+  storage:
+    max-value-bytes: 12582912

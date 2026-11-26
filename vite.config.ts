@@ -70,6 +70,14 @@ function newsApiPlugin(): Plugin {
 export default defineConfig({
   plugins: [vue(), precompressPlugin(), newsApiPlugin()],
   base: './',
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.DAKA_SERVE_PROXY || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

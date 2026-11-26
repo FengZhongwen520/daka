@@ -81,6 +81,29 @@ git status
 `deploy.ps1` 使用 npm 时对应的命令是 `npm run deploy` 和
 `npm run deploy:dry-run`。dry-run 也会构建，但不会连接服务器或修改线上文件。
 
+## 云端存储代理
+
+前端默认请求同源 `/api`。如果启用 `daka_serve`，Nginx 只需要把
+`/api/auth/` 和 `/api/storage` 转发到 Java 服务，保留现有
+`/api/news` 的资讯代理，避免两者的路由互相覆盖：
+
+```nginx
+location /api/auth/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
+location /api/storage {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+Java 服务生产启动前必须设置 `DAKA_ENCRYPTION_KEY` 和
+`DAKA_LOOKUP_PEPPER`，并备份密钥与数据库。密钥丢失后，云端数据无法恢复。
+
 ## 认证与故障排查
 
 - SSH 提示 `Permission denied (publickey)`：先检查服务器里的公钥、用户名和

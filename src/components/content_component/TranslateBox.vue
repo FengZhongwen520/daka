@@ -3,6 +3,7 @@ import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
+import { getItem, setItem } from '../../storage'
 type LangDir = 'zh2en' | 'en2zh'
 
 function hasChinese(text: string): boolean {
@@ -12,9 +13,9 @@ function hasChinese(text: string): boolean {
 // Load persisted state
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
 const tk = `tr${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedDir = localStorage.getItem(`${tk}-direction`)
+const savedDir = getItem(`${tk}-direction`)
 const direction = ref<LangDir>((savedDir === 'zh2en' || savedDir === 'en2zh') ? savedDir : 'en2zh')
-watch(direction, (v) => localStorage.setItem(`${tk}-direction`, v))
+watch(direction, (v) => setItem(`${tk}-direction`, v))
 
 const inputText = ref('')
 const outputText = ref('')
@@ -138,9 +139,9 @@ async function copyOutput() {
 }
 
 // Title
-const savedTitle = JSON.parse(localStorage.getItem(`${tk}-title`) || 'null')
+const savedTitle = JSON.parse(getItem(`${tk}-title`) || 'null')
 const title = ref(savedTitle ?? '🌐 翻译')
-watch(title, (v) => localStorage.setItem(`${tk}-title`, JSON.stringify(v)))
+watch(title, (v) => setItem(`${tk}-title`, JSON.stringify(v)))
 
 // Drag
 const posKey = `translate-pos${props.widgetId != null ? '-' + props.widgetId : ''}`

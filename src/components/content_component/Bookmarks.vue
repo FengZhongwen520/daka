@@ -10,6 +10,7 @@ import {
   updateSiteItem,
 } from '../../db'
 import type { BookmarkSource, SiteItem } from '../../db'
+import { getItem, setItem } from '../../storage'
 import FaviconImg from '../FaviconImg.vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
@@ -64,7 +65,7 @@ const loaded = ref(false)
 
 function readStoredJson(key: string): unknown {
   try {
-    return JSON.parse(localStorage.getItem(key) || 'null')
+    return JSON.parse(getItem(key) || 'null')
   } catch {
     return null
   }
@@ -97,7 +98,7 @@ function readCardSize(): CardSize {
     if (cols && rows) return { cols, rows }
   }
 
-  const legacy = localStorage.getItem(legacyLayoutKey) || ''
+  const legacy = getItem(legacyLayoutKey) || ''
   if (legacy === 'list' || legacy === '2x4') return { cols: 2, rows: 4 }
   if (legacy === '4x2') return { cols: 4, rows: 2 }
   if (legacy === 'compact' || legacy === '4x4') return { cols: 4, rows: 3 }
@@ -106,7 +107,7 @@ function readCardSize(): CardSize {
 
 const cardSize = ref<CardSize>(readCardSize())
 watch(cardSize, value => {
-  localStorage.setItem(sizeKey, JSON.stringify({
+  setItem(sizeKey, JSON.stringify({
     cols: normalizeCellCount(value.cols, MAX_COLS) ?? 3,
     rows: normalizeCellCount(value.rows, MAX_ROWS) ?? 3,
   }))
@@ -371,7 +372,7 @@ function onSiteLinkClick(event: MouseEvent) {
 
 async function persistSiteOrder(nextSites: SiteItem[]) {
   sites.value = nextSites
-  localStorage.setItem(sitesCacheKey.value, JSON.stringify(nextSites))
+  setItem(sitesCacheKey.value, JSON.stringify(nextSites))
   try {
     await reorderSiteItems(nextSites)
   } catch {
@@ -457,7 +458,7 @@ function siteDomain(raw: string): string {
 
 async function loadSites() {
   sites.value = await getSites(wid.value, source.value)
-  localStorage.setItem(sitesCacheKey.value, JSON.stringify(sites.value))
+  setItem(sitesCacheKey.value, JSON.stringify(sites.value))
 }
 
 // Browser bookmark import
@@ -652,7 +653,7 @@ async function applyImport(bookmarks: BookmarkLink[], folderName: string) {
     importedAt: new Date().toISOString(),
   }
   importMeta.value = meta
-  localStorage.setItem(importMetaKey, JSON.stringify(meta))
+  setItem(importMetaKey, JSON.stringify(meta))
   importFolders.value = []
   pendingFileName.value = ''
   await loadSites()

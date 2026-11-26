@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import { getItem, setItem } from '../storage'
 
 /**
  * 历史记录管理 composable
@@ -14,13 +15,13 @@ export function useHistoryList<T>(
   const history = shallowRef<T[]>([])
 
   // Load
-  const saved = localStorage.getItem(storageKey)
+  const saved = getItem(storageKey)
   if (saved) {
     try { history.value = JSON.parse(saved) } catch { /* ignore */ }
   }
 
   function persist() {
-    localStorage.setItem(storageKey, JSON.stringify(history.value))
+    setItem(storageKey, JSON.stringify(history.value))
   }
 
   function addRecord(item: T) {
