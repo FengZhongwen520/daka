@@ -155,6 +155,46 @@ const editingId = ref<number | null>(null)
 const editDraft = ref('')
 const editingGroupId = ref<number | null>(null)
 const groupTitleDraft = ref('')
+const todoTooltip = ref<{
+  visible: boolean
+  text: string
+  left: number
+  top: number
+  placement: 'above' | 'below'
+} | null>(null)
+let todoTooltipTimer: number | null = null
+
+function hideTodoTextTooltip() {
+  if (todoTooltipTimer != null) {
+    window.clearTimeout(todoTooltipTimer)
+    todoTooltipTimer = null
+  }
+  if (todoTooltip.value) todoTooltip.value.visible = false
+}
+
+function showTodoTextTooltip(event: MouseEvent | PointerEvent, text: string) {
+  hideTodoTextTooltip()
+  const row = event.currentTarget as HTMLElement
+  const target = row.querySelector<HTMLElement>('.todo-text') || row
+  todoTooltipTimer = window.setTimeout(() => {
+    if (
+      !target.isConnected
+      || !text.trim()
+      || target.scrollHeight <= target.clientHeight + 1
+    ) return
+    const rect = target.getBoundingClientRect()
+    const maxWidth = Math.min(320, window.innerWidth - 24)
+    const left = Math.min(Math.max(12, rect.left), window.innerWidth - maxWidth - 12)
+    const placement = rect.top > 110 ? 'above' : 'below'
+    todoTooltip.value = {
+      visible: true,
+      text: text.trim(),
+      left,
+      top: placement === 'above' ? rect.top - 8 : rect.bottom + 8,
+      placement,
+    }
+  }, 320)
+}
 
 function addItem() {
   const text = draft.value.trim()
@@ -275,6 +315,7 @@ function beginDragSession(item: TodoItem, event: MouseEvent | PointerEvent): boo
   if ('pointerType' in event && event.pointerType === 'touch') return false
   if ((event.target as HTMLElement).closest('button, input')) return false
 
+  hideTodoTextTooltip()
   pointerDrag = {
     id: item.id,
     startX: event.clientX,
@@ -428,6 +469,7 @@ function clearGroupDragOver(id: number) {
 watch(tab, endItemDrag)
 
 onUnmounted(endItemDrag)
+onUnmounted(hideTodoTextTooltip)
 
 const posKey = `todo-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
 const { x, y, onDragStart } = useWidgetDrag(props, posKey, 340, 140)
@@ -649,6 +691,8 @@ onUnmounted(() => {
           @mousedown="beginItemMouseDrag(entry.item, $event)"
           @pointerenter="setDragOver(entry.item.id)"
           @pointerleave="clearDragOver(entry.item.id)"
+          @mouseenter="showTodoTextTooltip($event, entry.item.text)"
+          @mouseleave="hideTodoTextTooltip"
         >
           <button
             class="todo-status"
@@ -671,7 +715,7 @@ onUnmounted(() => {
           <span
             v-else
             class="todo-text"
-            :title="'双击编辑'"
+            :title="entry.item.text"
             @dblclick="startEdit(entry.item.id)"
           >{{ entry.item.text }}</span>
 
@@ -750,6 +794,18 @@ onUnmounted(() => {
       </button>
     </div>
   </div>
+
+  <Teleport to="body">
+    <Transition name="todo-tooltip">
+      <div
+        v-if="todoTooltip?.visible"
+        class="todo-text-tooltip"
+        :class="{ 'is-above': todoTooltip.placement === 'above' }"
+        :style="{ left: todoTooltip.left + 'px', top: todoTooltip.top + 'px' }"
+        role="tooltip"
+      >{{ todoTooltip.text }}</div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -895,8 +951,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
-  padding: 0 4px;
+  min-height: 26px;
+  height: auto;
+  padding: 4px;
   border-radius: 6px;
   transition: background 0.15s;
   flex-shrink: 0;
@@ -1068,11 +1125,15 @@ onUnmounted(() => {
 .todo-text {
   flex: 1;
   min-width: 0;
-  font-size: 0.75rem;
-  color: var(--color-ink);
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+  white-space: normal;
   cursor: pointer;
   user-select: none;
 }
@@ -1084,6 +1145,35 @@ onUnmounted(() => {
   color: var(--color-ink-3);
   text-decoration: line-through;
 }
+
+.todo-text-tooltip {
+  position: fixed;
+  z-index: 5000;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  color: var(--color-ink);
+  font-size: 0.72rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+.todo-text-tooltip.is-above { transform: translateY(-100%); }
+.todo-tooltip-enter-active,
+.todo-tooltip-leave-active { transition: opacity 120ms ease, transform 120ms ease; }
+.todo-tooltip-enter-from,
+.todo-tooltip-leave-to { opacity: 0; }
+.todo-tooltip-enter-from:not(.is-above),
+.todo-tooltip-leave-to:not(.is-above) { transform: translateY(-3px); }
+.todo-tooltip-enter-from.is-above,
+.todo-tooltip-leave-to.is-above { transform: translateY(calc(-100% + 3px)); }
 
 /* Hover actions — 编辑 / 删除 */
 .todo-act {
