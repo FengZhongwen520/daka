@@ -32,6 +32,18 @@ export interface Memo {
   createdAt: Date
 }
 
+export interface DiaryEntry {
+  id?: number
+  widgetId: number
+  date: string
+  title: string
+  content: string
+  mood: string
+  tags: string[]
+  createdAt: Date
+  updatedAt: Date
+}
+
 export const MEMO_COLORS = ['#fff385', '#ffd4b8', '#c5f0d2', '#d4e4ff', '#f5d4ff']
 
 export interface ExportData {
@@ -41,6 +53,7 @@ export interface ExportData {
   checkins: CheckIn[]
   photos: Photo[]
   memos: Memo[]
+  diaryEntries?: DiaryEntry[]
   sites: any[]
   widgets: any[]
   wallpaper: any[]

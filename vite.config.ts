@@ -1,8 +1,9 @@
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
+import { handleNewsRequest } from './server/news-service.mjs'
 
 function precompressPlugin(): Plugin {
   const candidates = new Set(['.html', '.js', '.css', '.svg', '.json', '.webmanifest'])
@@ -41,9 +42,33 @@ function precompressPlugin(): Plugin {
   }
 }
 
+function newsApiPlugin(): Plugin {
+  function install(server: ViteDevServer | PreviewServer) {
+    server.middlewares.use((request, response, next) => {
+      if (!request.url?.startsWith('/api/news') && request.url !== '/api/health') {
+        next()
+        return
+      }
+      void handleNewsRequest(request, response).catch((error) => {
+        if (!response.writableEnded) {
+          response.statusCode = 500
+          response.setHeader('Content-Type', 'application/json; charset=utf-8')
+          response.end(JSON.stringify({ error: String(error) }))
+        }
+      })
+    })
+  }
+
+  return {
+    name: 'yechao-news-api',
+    configureServer: install,
+    configurePreviewServer: install,
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), precompressPlugin()],
+  plugins: [vue(), precompressPlugin(), newsApiPlugin()],
   base: './',
   build: {
     chunkSizeWarningLimit: 1000,

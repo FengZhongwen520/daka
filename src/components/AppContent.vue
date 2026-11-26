@@ -42,6 +42,8 @@ const widgetMap: Record<string, any> = {
   fan: defineAsyncComponent(() => import('./content_component/Fan.vue')),
   clock: defineAsyncComponent(() => import('./content_component/ClockWidget.vue')),
   todo: defineAsyncComponent(() => import('./content_component/TodoList.vue')),
+  diary: defineAsyncComponent(() => import('./content_component/DiaryJournal.vue')),
+  news: defineAsyncComponent(() => import('./content_component/NewsRadar.vue')),
 }
 
 // Widget instances
@@ -233,9 +235,11 @@ const galleryPrimaryTypes = new Set([
   'weather',
   'clock',
   'todo',
+  'diary',
   'calculator',
   'searchengine',
   'translate',
+  'news',
 ])
 const galleryPrimaryWidgets = computed(() => WIDGETS.filter(widget => galleryPrimaryTypes.has(widget.type)))
 const galleryMoreWidgets = computed(() => WIDGETS.filter(widget => !galleryPrimaryTypes.has(widget.type)))

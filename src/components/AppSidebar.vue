@@ -95,7 +95,7 @@ async function onClearData() {
     // Clear ALL IndexedDB data
     await Promise.all([
       db.projects.clear(), db.checkins.clear(), db.photos.clear(),
-      db.memos.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
+      db.memos.clear(), db.diaryEntries.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
     ])
     // Clear all localStorage
     localStorage.clear()

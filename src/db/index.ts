@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Project, CheckIn, Photo, Memo, ExportData } from '../types'
+import type { Project, CheckIn, Photo, Memo, DiaryEntry, ExportData } from '../types'
 
 export type BookmarkSource = 'custom' | 'imported'
 export interface SiteItem {
@@ -25,17 +25,19 @@ class DakaDB extends Dexie {
   checkins!: Table<CheckIn, number>
   photos!: Table<Photo, number>
   memos!: Table<Memo, number>
+  diaryEntries!: Table<DiaryEntry, number>
   sites!: Table<SiteItem, number>
   widgets!: Table<WidgetInstance, number>
   wallpaper!: Table<{ id?: number; dataUrl: string }, number>
 
   constructor() {
     super('daka')
-    this.version(8).stores({
+    this.version(9).stores({
       projects: '++id, name',
       checkins: '++id, [projectId+date]',
       photos: '++id, position',
       memos: '++id, memoKey',
+      diaryEntries: '++id, [widgetId+date], widgetId, date, updatedAt',
       sites: '++id, widgetId',
       widgets: '++id, type, projectId',
       wallpaper: '++id',
@@ -238,6 +240,7 @@ export async function exportAll(): Promise<ExportData> {
   const checkins = await db.checkins.toArray()
   const photos = await db.photos.toArray()
   const memos = await db.memos.toArray()
+  const diaryEntries = await db.diaryEntries.toArray()
   const sites = await db.sites.toArray()
   const widgets = await db.widgets.toArray()
   const wallpaperRows = await db.wallpaper.toArray()
@@ -247,18 +250,19 @@ export async function exportAll(): Promise<ExportData> {
     const key = localStorage.key(i)
     if (key) lsData[key] = localStorage.getItem(key) || ''
   }
-  return { version: 2, exportedAt: new Date().toISOString(), projects, checkins, photos, memos, sites, widgets, wallpaper: wallpaperRows, lsData }
+  return { version: 3, exportedAt: new Date().toISOString(), projects, checkins, photos, memos, diaryEntries, sites, widgets, wallpaper: wallpaperRows, lsData }
 }
 
 export async function importAll(data: ExportData): Promise<void> {
   await Promise.all([
     db.checkins.clear(), db.projects.clear(), db.photos.clear(),
-    db.memos.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
+    db.memos.clear(), db.diaryEntries.clear(), db.sites.clear(), db.widgets.clear(), db.wallpaper.clear(),
   ])
   for (const p of data.projects) await db.projects.add(p)
   for (const c of data.checkins) await db.checkins.add(c)
   if (data.photos) for (const ph of data.photos) await db.photos.add(ph)
   if (data.memos) for (const m of data.memos) await db.memos.add(m)
+  if (data.diaryEntries) for (const entry of data.diaryEntries) await db.diaryEntries.add(entry)
   if (data.sites) for (const s of data.sites) await db.sites.add(s)
   if (data.widgets) for (const w of data.widgets) await db.widgets.add(w)
   if (data.wallpaper) for (const wp of data.wallpaper) await db.wallpaper.add(wp)
