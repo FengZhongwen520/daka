@@ -28,11 +28,25 @@ export interface WidgetInstance {
   projectId: number
   zIndex?: number
 }
+export interface LocalPhotoAsset {
+  id?: number
+  localUrl: string
+  position: string
+  dataUrl: string
+  createdAt: Date
+}
+export interface PhotoReference {
+  id?: number
+  position: string
+  url: string
+  createdAt: Date
+}
 
 class DakaDB extends Dexie {
   projects!: Table<Project, number>
   checkins!: Table<CheckIn, number>
   photos!: Table<Photo, number>
+  localPhotoAssets!: Table<LocalPhotoAsset, number>
   memos!: Table<Memo, number>
   diaryEntries!: Table<DiaryEntry, number>
   sites!: Table<SiteItem, number>
@@ -41,10 +55,11 @@ class DakaDB extends Dexie {
 
   constructor() {
     super('daka')
-    this.version(9).stores({
+    this.version(10).stores({
       projects: '++id, name',
       checkins: '++id, [projectId+date]',
       photos: '++id, position',
+      localPhotoAssets: '++id, &localUrl, position',
       memos: '++id, memoKey',
       diaryEntries: '++id, [widgetId+date], widgetId, date, updatedAt',
       sites: '++id, widgetId',
@@ -59,7 +74,7 @@ export const db = new DakaDB()
 const CLOUD_COLLECTIONS = {
   projects: 'domain:projects',
   checkins: 'domain:checkins',
-  photos: 'domain:photos',
+  photos: 'domain:photo-refs',
   memos: 'domain:memos',
   diaryEntries: 'domain:diary-entries',
   sites: 'domain:sites',
@@ -177,8 +192,20 @@ export async function toggleCheckIn(projectId: number, date: string): Promise<bo
 // Photo CRUD
 export async function getPhoto(key: string): Promise<Photo | null> {
   if (storageMode.value === 'cloud') {
-    return cloudCollection<Photo>(CLOUD_COLLECTIONS.photos)
-      .find(photo => photo.position === key) || null
+    const reference = cloudCollection<PhotoReference>(CLOUD_COLLECTIONS.photos)
+      .find(photo => photo.position === key)
+    if (!reference) return null
+    const asset = await db.localPhotoAssets.where('localUrl').equals(reference.url).first()
+    return asset ? {
+      position: key,
+      dataUrl: asset.dataUrl,
+      url: reference.url,
+      createdAt: reference.createdAt,
+    } : {
+      position: key,
+      url: reference.url,
+      createdAt: reference.createdAt,
+    }
   }
   const photo = await db.photos.where('position').equals(key).first()
   return photo || null
@@ -186,15 +213,8 @@ export async function getPhoto(key: string): Promise<Photo | null> {
 
 export async function savePhoto(key: string, dataUrl: string): Promise<void> {
   if (storageMode.value === 'cloud') {
-    const photos = cloudCollection<Photo>(CLOUD_COLLECTIONS.photos)
-    const existing = photos.find(photo => photo.position === key)
-    if (existing) {
-      existing.dataUrl = dataUrl
-      existing.createdAt = new Date()
-    } else {
-      photos.push({ id: nextNumericId(photos), position: key as Photo['position'], dataUrl, createdAt: new Date() })
-    }
-    writeCloudCollection(CLOUD_COLLECTIONS.photos, photos)
+    const photos = await getPhotos(key)
+    await savePhotos(key, photos.includes(dataUrl) ? photos : [...photos, dataUrl])
     return
   }
   const existing = await db.photos.where('position').equals(key).first()
@@ -209,8 +229,9 @@ export async function deletePhoto(key: string): Promise<void> {
   if (storageMode.value === 'cloud') {
     writeCloudCollection(
       CLOUD_COLLECTIONS.photos,
-      cloudCollection<Photo>(CLOUD_COLLECTIONS.photos).filter(photo => photo.position !== key),
+      cloudCollection<PhotoReference>(CLOUD_COLLECTIONS.photos).filter(photo => photo.position !== key),
     )
+    await db.localPhotoAssets.where('position').equals(key).delete()
     return
   }
   await db.photos.where('position').equals(key).delete()
@@ -218,33 +239,53 @@ export async function deletePhoto(key: string): Promise<void> {
 
 export async function getPhotos(key: string): Promise<string[]> {
   if (storageMode.value === 'cloud') {
-    return cloudCollection<Photo>(CLOUD_COLLECTIONS.photos)
+    const references = cloudCollection<PhotoReference>(CLOUD_COLLECTIONS.photos)
       .filter(photo => photo.position === key)
-      .map(photo => photo.dataUrl)
-      .filter(Boolean)
+    if (references.length === 0) return []
+    const assets = await db.localPhotoAssets.where('position').equals(key).toArray()
+    const dataByUrl = new Map(assets.map(asset => [asset.localUrl, asset.dataUrl]))
+    return references
+      .map(reference => dataByUrl.get(reference.url))
+      .filter((url): url is string => Boolean(url))
   }
   return (await db.photos.where('position').equals(key).toArray())
     .map(photo => photo.dataUrl)
-    .filter(Boolean)
+    .filter((url): url is string => Boolean(url))
 }
 
 export async function savePhotos(key: string, dataUrls: string[]): Promise<void> {
   if (storageMode.value === 'cloud') {
-    const others = cloudCollection<Photo>(CLOUD_COLLECTIONS.photos)
+    const currentAssets = await db.localPhotoAssets.where('position').equals(key).toArray()
+    const assetByData = new Map(currentAssets.map(asset => [asset.dataUrl, asset]))
+    const updatedAssets: LocalPhotoAsset[] = []
+    const references: PhotoReference[] = []
+    for (const dataUrl of dataUrls) {
+      let asset = assetByData.get(dataUrl)
+      if (!asset) {
+        const localUrl = `local-photo://${encodeURIComponent(key)}/${createLocalAssetId()}`
+        asset = { localUrl, position: key, dataUrl, createdAt: new Date() }
+      }
+      updatedAssets.push(asset)
+      references.push({
+        position: key,
+        url: asset.localUrl,
+        createdAt: asset.createdAt,
+      })
+    }
+    const keptUrls = new Set(updatedAssets.map(asset => asset.localUrl))
+    const removedIds = currentAssets
+      .filter(asset => !keptUrls.has(asset.localUrl) && asset.id != null)
+      .map(asset => asset.id!)
+    if (removedIds.length > 0) await db.localPhotoAssets.bulkDelete(removedIds)
+    await db.localPhotoAssets.bulkPut(updatedAssets)
+    const others = cloudCollection<PhotoReference>(CLOUD_COLLECTIONS.photos)
       .filter(photo => photo.position !== key)
-    let nextId = nextNumericId(others)
-    const records = dataUrls.map(dataUrl => ({
-      id: nextId++,
-      position: key as Photo['position'],
-      dataUrl,
-      createdAt: new Date(),
-    }))
-    writeCloudCollection(CLOUD_COLLECTIONS.photos, [...others, ...records])
+    writeCloudCollection(CLOUD_COLLECTIONS.photos, [...others, ...references])
     return
   }
   await db.photos.where('position').equals(key).delete()
   for (const dataUrl of dataUrls) {
-    await db.photos.add({ position: key as Photo['position'], dataUrl, createdAt: new Date() })
+    await db.photos.add({ position: key, dataUrl, createdAt: new Date() })
   }
 }
 
@@ -585,7 +626,7 @@ export async function exportAll(): Promise<ExportData> {
     ? cloudCollection<CheckIn>(CLOUD_COLLECTIONS.checkins)
     : await db.checkins.toArray()
   const photos = storageMode.value === 'cloud'
-    ? cloudCollection<Photo>(CLOUD_COLLECTIONS.photos)
+    ? cloudCollection<PhotoReference>(CLOUD_COLLECTIONS.photos)
     : await db.photos.toArray()
   const memos = storageMode.value === 'cloud'
     ? cloudCollection<Memo>(CLOUD_COLLECTIONS.memos)
@@ -631,7 +672,11 @@ export async function importAll(data: ExportData): Promise<void> {
   } else {
     for (const p of data.projects) await db.projects.add(p)
     for (const c of data.checkins) await db.checkins.add(c)
-    if (data.photos) for (const ph of data.photos) await db.photos.add(ph)
+    if (data.photos) {
+      for (const photo of data.photos) {
+        if (photo.dataUrl) await db.photos.add(photo as Photo)
+      }
+    }
     if (data.memos) for (const m of data.memos) await db.memos.add(m)
     if (data.diaryEntries) for (const entry of data.diaryEntries) await db.diaryEntries.add(entry)
     if (data.sites) for (const s of data.sites) await db.sites.add(s)
@@ -649,6 +694,7 @@ export async function importAll(data: ExportData): Promise<void> {
 export async function clearAllData(): Promise<void> {
   clearItems()
   if (storageMode.value === 'cloud') {
+    await db.localPhotoAssets.clear()
     await flushStorage()
     return
   }
@@ -656,10 +702,18 @@ export async function clearAllData(): Promise<void> {
     db.projects.clear(),
     db.checkins.clear(),
     db.photos.clear(),
+    db.localPhotoAssets.clear(),
     db.memos.clear(),
     db.diaryEntries.clear(),
     db.sites.clear(),
     db.widgets.clear(),
     db.wallpaper.clear(),
   ])
+}
+
+function createLocalAssetId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }

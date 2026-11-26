@@ -178,7 +178,7 @@ class ComponentStorageContractTest {
         samples.put("clock-mode", "analog");
         samples.put("cal-checkins-1", "[\"2026-11-26\",\"2026-11-25\"]");
         samples.put("cal-events-1", "{\"2026-11-26\":[{\"id\":1,\"text\":\"完成契约测试\",\"done\":false}]}");
-        samples.put("pomodoro-state-1", "{\"remaining\":1500,\"running\":false,\"mode\":\"focus\"}");
+        samples.put("pomodoro-pos-1", "{\"x\":660,\"y\":420}");
         samples.put("domain:memos", "[{\"id\":1,\"memoKey\":\"memo-1\",\"text\":\"便签内容\",\"bgColor\":\"#fff385\"}]");
         samples.put("sticky-text-1", "{\"text\":\"便利贴内容\"}");
         samples.put("todo-1-items", "[{\"id\":1,\"text\":\"待办事项\",\"status\":\"doing\"}]");
@@ -186,9 +186,9 @@ class ComponentStorageContractTest {
         samples.put("calc-pos-1", "{\"x\":500,\"y\":100}");
         samples.put("se-1-history", "[{\"query\":\"daka\",\"engine\":\"bing\",\"time\":1760000000000}]");
         samples.put("tr-1-title", "\"中文翻译\"");
-        samples.put("water-2026-11-26-1", "{\"total\":750,\"lastDrink\":1760000000000,\"lastNotify\":0}");
+        samples.put("water-pos-1", "{\"x\":870,\"y\":420}");
         samples.put("whitenoise-pos-1", "{\"x\":20,\"y\":300}");
-        samples.put("domain:photos", "[{\"id\":1,\"position\":\"photo-1\",\"dataUrl\":\"data:image/png;base64,AA==\"}]");
+        samples.put("domain:photo-refs", "[{\"position\":\"photo-1\",\"url\":\"local-photo://photo-1/example\"}]");
         samples.put("fan-state-1", "{\"powered\":true,\"speed\":2}");
         return samples;
     }

@@ -1,93 +1,118 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
+import { getCloudToken } from '../../storage'
+import {
+  getPomodoro,
+  pausePomodoro,
+  resetPomodoro,
+  savePomodoroSettings,
+  setPomodoroNotifications,
+  startPomodoro,
+  type PomodoroEvent,
+  type PomodoroState,
+} from '../../services/cloudFeatures'
+import { ensureRealtimeConnection, subscribeRealtime } from '../../services/realtime'
+import { notify as toast } from '../../utils/feedback'
 
-import { getItem, setItem } from '../../storage'
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
-
-// Settings — with widgetId isolation
-const settingsKey = `pomodoro-settings${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedSettings = JSON.parse(getItem(settingsKey) || 'null')
-const focusMin = ref(savedSettings?.focus ?? 25)
-const breakMin = ref(savedSettings?.break ?? 5)
+const widgetId = props.widgetId ?? 0
+const state = ref<PomodoroState | null>(null)
+const receivedAt = ref(Date.now())
+const clock = ref(Date.now())
+const busy = ref(false)
 const showSettings = ref(false)
+const focusMin = ref(25)
+const breakMin = ref(5)
 
-const focusSec = computed(() => focusMin.value * 60)
-const breakSec = computed(() => breakMin.value * 60)
-
-// Persistent running state — restored on refresh
-const stateKey = `pomodoro-state${props.widgetId != null ? '-' + props.widgetId : ''}`
-const savedState = JSON.parse(getItem(stateKey) || 'null')
-
-const mode = ref<'focus' | 'break'>(savedState?.mode === 'break' ? 'break' : 'focus')
-let initRemaining = savedState?.remaining ?? focusSec.value
-let initRunning = savedState?.running ?? false
-
-if (initRunning && savedState?.deadline) {
-  // Running → restore from the absolute deadline so the countdown stays accurate
-  initRemaining = Math.max(Math.round((savedState.deadline - Date.now()) / 1000), 0)
-  if (initRemaining <= 0) {
-    // Phase finished while the page was closed — move on to the next phase
-    initRunning = false
-    mode.value = mode.value === 'focus' ? 'break' : 'focus'
-    initRemaining = mode.value === 'focus' ? focusSec.value : breakSec.value
-  }
-}
-
-const remaining = ref(initRemaining)
-const running = ref(initRunning)
-const deadline = ref(0)
-let timer: ReturnType<typeof setInterval> | null = null
-
-if (initRunning) startTimer()
-
-const total = computed(() => mode.value === 'focus' ? focusSec.value : breakSec.value)
+const mode = computed(() => state.value?.mode ?? 'focus')
+const running = computed(() => state.value?.running ?? false)
+const notificationsEnabled = computed(() => state.value?.notificationsEnabled ?? true)
+const remaining = computed(() => {
+  const current = state.value
+  if (!current) return 25 * 60
+  if (!current.running) return current.remainingSeconds
+  const elapsed = Math.max(0, Math.floor((clock.value - receivedAt.value) / 1000))
+  return Math.max(0, current.remainingSeconds - elapsed)
+})
+const total = computed(() => {
+  const current = state.value
+  if (!current) return 25 * 60
+  return (mode.value === 'focus' ? current.focusMinutes : current.breakMinutes) * 60
+})
 const minutes = computed(() => Math.floor(remaining.value / 60))
 const seconds = computed(() => remaining.value % 60)
 const progress = computed(() => total.value > 0 ? 1 - remaining.value / total.value : 0)
 const circumference = 2 * Math.PI * 70
+let clockTimer: ReturnType<typeof setInterval> | null = null
+let fallbackPoll: ReturnType<typeof setInterval> | null = null
+let unsubscribeRealtime: (() => void) | null = null
+
+const posKey = `pomodoro-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
+const { x, y, onDragStart } = useWidgetDrag(props, posKey, 660, 420, true)
+
+function tokenOrThrow(): string {
+  const token = getCloudToken()
+  if (!token) throw new Error('番茄钟为云端专属组件，请先登录')
+  return token
+}
+
+function applyState(next: PomodoroState) {
+  state.value = next
+  receivedAt.value = Date.now()
+  focusMin.value = next.focusMinutes
+  breakMin.value = next.breakMinutes
+}
+
+async function loadState() {
+  try {
+    applyState(await getPomodoro(tokenOrThrow(), widgetId))
+  } catch (reason) {
+    toast(reason instanceof Error ? reason.message : '番茄钟状态加载失败', 'error')
+  }
+}
+
+async function runAction(action: () => Promise<PomodoroState>) {
+  if (busy.value) return
+  busy.value = true
+  try {
+    applyState(await action())
+  } catch (reason) {
+    toast(reason instanceof Error ? reason.message : '番茄钟操作失败', 'error')
+  } finally {
+    busy.value = false
+  }
+}
 
 function saveSettings() {
-  setItem(settingsKey, JSON.stringify({ focus: focusMin.value, break: breakMin.value }))
-  if (mode.value === 'focus') remaining.value = focusSec.value
-  else remaining.value = breakSec.value
-  showSettings.value = false
-  saveState()
+  void runAction(async () => {
+    const next = await savePomodoroSettings(
+      tokenOrThrow(),
+      widgetId,
+      Math.max(1, Math.min(120, Math.round(focusMin.value))),
+      Math.max(1, Math.min(60, Math.round(breakMin.value))),
+    )
+    showSettings.value = false
+    return next
+  })
 }
 
 function openSettings() {
   if (running.value) return
+  focusMin.value = state.value?.focusMinutes ?? 25
+  breakMin.value = state.value?.breakMinutes ?? 5
   showSettings.value = true
 }
-
-const posKey = `pomodoro-pos${props.widgetId != null ? '-' + props.widgetId : ''}`
-const { x, y, onDragStart } = useWidgetDrag(props, posKey, 660, 420, true)
 
 function handleDragStart(e: MouseEvent) {
   if (showSettings.value) return
   onDragStart(e)
 }
 
-function saveState() {
-  setItem(stateKey, JSON.stringify({
-    mode: mode.value,
-    running: running.value,
-    deadline: running.value ? deadline.value : 0,
-    remaining: remaining.value,
-  }))
-}
-
-// Desktop notifications — fire even when the tab is in the background
-const notificationsEnabled = ref(getItem('pomodoro-notify') !== 'false')
-watch(notificationsEnabled, (v) => setItem('pomodoro-notify', String(v)))
-
 async function ensureNotifyPermission() {
-  if (!notificationsEnabled.value) return
-  if (!('Notification' in window)) return
-  if (Notification.permission === 'default') {
-    await Notification.requestPermission()
-  }
+  if (!notificationsEnabled.value || !('Notification' in window)) return
+  if (Notification.permission === 'default') await Notification.requestPermission()
 }
 
 function notify(title: string, body: string) {
@@ -97,62 +122,57 @@ function notify(title: string, body: string) {
 }
 
 async function toggleNotify() {
-  notificationsEnabled.value = !notificationsEnabled.value
-  if (notificationsEnabled.value) await ensureNotifyPermission()
-}
-
-function startTimer() {
-  if (timer) return
-  deadline.value = Date.now() + remaining.value * 1000
-  running.value = true
-  timer = setInterval(tick, 1000)
-  saveState()
-  ensureNotifyPermission()
-}
-
-function tick() {
-  // Compute from the absolute deadline so it stays accurate across refresh
-  remaining.value = Math.max(Math.round((deadline.value - Date.now()) / 1000), 0)
-  if (remaining.value <= 0) {
-    clearInterval(timer!)
-    timer = null
-    running.value = false
-    playBeep()
-    if (mode.value === 'focus') {
-      mode.value = 'break'
-      remaining.value = breakSec.value
-      notify('🍅 专注结束', `休息一下，${breakMin.value} 分钟`)
-    } else {
-      mode.value = 'focus'
-      remaining.value = focusSec.value
-      notify('☕ 休息结束', `开始下一轮专注，${focusMin.value} 分钟`)
-    }
-    saveState()
-  }
+  await runAction(async () => {
+    const next = await setPomodoroNotifications(
+      tokenOrThrow(),
+      widgetId,
+      !notificationsEnabled.value,
+    )
+    if (next.notificationsEnabled) await ensureNotifyPermission()
+    return next
+  })
 }
 
 function toggleTimer() {
-  if (running.value) {
-    clearInterval(timer!)
-    timer = null
-    running.value = false
-    saveState()
-  } else {
-    startTimer()
-  }
+  if (busy.value) return
+  void runAction(() => (
+    running.value
+      ? pausePomodoro(tokenOrThrow(), widgetId)
+      : startPomodoro(tokenOrThrow(), widgetId)
+  ))
+  if (!running.value) void ensureNotifyPermission()
 }
 
 function resetTimer() {
-  clearInterval(timer!)
-  timer = null
-  running.value = false
-  mode.value = 'focus'
-  remaining.value = focusSec.value
-  saveState()
+  void runAction(() => resetPomodoro(tokenOrThrow(), widgetId))
 }
 
+function handleRealtime(payload: unknown) {
+  const update = payload as Partial<PomodoroEvent>
+  if (!update.state || update.state.widgetId !== widgetId) return
+  applyState(update.state)
+  if (update.completed) {
+    playBeep()
+    if (update.state.mode === 'break') {
+      notify('🍅 专注结束', `休息一下，${update.state.breakMinutes} 分钟`)
+    } else {
+      notify('☕ 休息结束', `开始下一轮专注，${update.state.focusMinutes} 分钟`)
+    }
+  }
+}
+
+onMounted(async () => {
+  await loadState()
+  unsubscribeRealtime = subscribeRealtime('pomodoro.state', handleRealtime)
+  await ensureRealtimeConnection()
+  clockTimer = setInterval(() => { clock.value = Date.now() }, 250)
+  fallbackPoll = setInterval(() => { void loadState() }, 20_000)
+})
+
 onUnmounted(() => {
-  clearInterval(timer!)
+  unsubscribeRealtime?.()
+  if (clockTimer) clearInterval(clockTimer)
+  if (fallbackPoll) clearInterval(fallbackPoll)
 })
 
 function playBeep() {

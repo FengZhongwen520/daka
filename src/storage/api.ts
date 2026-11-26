@@ -29,7 +29,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
   token?: string,
@@ -66,41 +66,58 @@ async function request<T>(
 }
 
 export function register(loginId: string, password: string): Promise<AuthSession> {
-  return request<AuthSession>('/auth/register', {
+  return apiRequest<AuthSession>('/auth/register', {
     method: 'POST',
     body: JSON.stringify({ loginId, password }),
   })
 }
 
 export function login(loginId: string, password: string): Promise<AuthSession> {
-  return request<AuthSession>('/auth/login', {
+  return apiRequest<AuthSession>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ loginId, password }),
   })
 }
 
 export function logout(token: string): Promise<void> {
-  return request<void>('/auth/logout', { method: 'POST' }, token)
+  return apiRequest<void>('/auth/logout', { method: 'POST' }, token)
 }
 
 export async function loadRecords(token: string): Promise<StorageRecord[]> {
-  const response = await request<{ records: StorageRecord[] }>('/storage', {}, token)
+  const response = await apiRequest<{ records: StorageRecord[] }>('/storage', {}, token)
   return Array.isArray(response.records) ? response.records : []
 }
 
 export function putRecord(token: string, key: string, value: string): Promise<void> {
-  return request<void>('/storage', {
+  return apiRequest<void>('/storage', {
     method: 'PUT',
     body: JSON.stringify({ key, value }),
   }, token)
 }
 
 export function deleteRecord(token: string, key: string): Promise<void> {
-  return request<void>(`/storage?key=${encodeURIComponent(key)}`, {
+  return apiRequest<void>(`/storage?key=${encodeURIComponent(key)}`, {
     method: 'DELETE',
   }, token)
 }
 
 export function clearRecords(token: string): Promise<void> {
-  return request<void>('/storage/all', { method: 'DELETE' }, token)
+  return apiRequest<void>('/storage/all', { method: 'DELETE' }, token)
+}
+
+export interface RealtimeTicket {
+  ticket: string
+  expiresInSeconds: number
+}
+
+export function createRealtimeTicket(token: string): Promise<RealtimeTicket> {
+  return apiRequest<RealtimeTicket>('/realtime/ticket', { method: 'POST' }, token)
+}
+
+export function realtimeUrl(ticket: string): string {
+  const url = new URL(API_BASE, window.location.href)
+  const basePath = url.pathname.replace(/\/api\/?$/, '')
+  const path = `${basePath}/ws/realtime`.replace(/\/+/g, '/')
+  const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${url.host}${path}?ticket=${encodeURIComponent(ticket)}`
 }

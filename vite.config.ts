@@ -76,6 +76,10 @@ export default defineConfig({
         target: process.env.DAKA_SERVE_PROXY || 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/ws': {
+        target: process.env.DAKA_SERVE_PROXY?.replace(/^http/, 'ws') || 'ws://localhost:8080',
+        ws: true,
+      },
     },
   },
   build: {

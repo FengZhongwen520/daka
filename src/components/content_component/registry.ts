@@ -4,6 +4,7 @@ export interface WidgetDef {
   icon: string
   desc: string
   defaultPos: { x: number; y: number }
+  cloudOnly?: boolean
 }
 
 export const WIDGETS: WidgetDef[] = [
@@ -15,7 +16,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'clock', name: '时钟', icon: '🕐', desc: '数字 / 钟表双模式', defaultPos: { x: 700, y: 80 } },
   // 效率工具
   { type: 'calendar', name: '日历书', icon: '📅', desc: '3D翻页打卡日历', defaultPos: { x: 280, y: 80 } },
-  { type: 'pomodoro', name: '番茄钟', icon: '🍅', desc: '25+5倒计时', defaultPos: { x: 600, y: 380 } },
+  { type: 'pomodoro', name: '番茄钟', icon: '🍅', desc: '云端计时 + 实时推送', defaultPos: { x: 600, y: 380 }, cloudOnly: true },
   { type: 'memo', name: '便签', icon: '📝', desc: '可拖拽文字便签', defaultPos: { x: 100, y: 100 } },
   { type: 'sticky', name: '便利贴', icon: '📌', desc: '可编辑便利贴', defaultPos: { x: 80, y: 12 } },
   { type: 'todo', name: '待办', icon: '✅', desc: '清单 · 待办/进行中/完成', defaultPos: { x: 340, y: 140 } },
@@ -24,7 +25,7 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'searchengine', name: '搜索引擎', icon: '🔎', desc: '多引擎搜索', defaultPos: { x: 420, y: 280 } },
   { type: 'translate', name: '翻译', icon: '🌐', desc: '中英互译', defaultPos: { x: 520, y: 200 } },
   // 健康生活
-  { type: 'water', name: '饮水追踪', icon: '💧', desc: '每日饮水记录', defaultPos: { x: 800, y: 400 } },
+  { type: 'water', name: '饮水追踪', icon: '💧', desc: '云端每日饮水记录', defaultPos: { x: 800, y: 400 }, cloudOnly: true },
   { type: 'whitenoise', name: '白噪音', icon: '📻', desc: '6种环境音效', defaultPos: { x: 20, y: 280 } },
   // 装饰
   { type: 'photoframe', name: '照片框', icon: '🖼', desc: '照片卡片展示', defaultPos: { x: 60, y: 200 } },

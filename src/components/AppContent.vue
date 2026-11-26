@@ -23,7 +23,7 @@ import WidgetWrapper from './content_component/WidgetWrapper.vue'
 import ContextMenu from './common/ContextMenu.vue'
 import { useContextMenu } from '../composables/useContextMenu'
 import UiDialog from './common/UiDialog.vue'
-import { getItem, setItem } from '../storage'
+import { getItem, setItem, storageMode } from '../storage'
 
 // Widget components — lazy loaded per type
 const widgetMap: Record<string, any> = {
@@ -59,6 +59,10 @@ const observedWidgets = new WeakSet<Element>()
 
 const topZIndex = computed(() => Math.max(0, ...widgets.value.map(widget => widget.zIndex ?? 0)))
 const collisionCount = computed(() => overlappingWidgetIds.value.size)
+const cloudOnlyTypes = new Set(WIDGETS.filter(widget => widget.cloudOnly).map(widget => widget.type))
+const visibleWidgets = computed(() => (
+  widgets.value.filter(widget => storageMode.value === 'cloud' || !cloudOnlyTypes.has(widget.type))
+))
 
 function getCacheKey() { return `widgets-cache-${selectedProjectId.value}` }
 
@@ -110,6 +114,9 @@ function getNewWidgetPos(): { x: number; y: number } {
 
 async function onAddWidget(type: string) {
   if (!widgetMap[type] || !selectedProjectId.value) return
+  if (cloudOnlyTypes.has(type) && storageMode.value !== 'cloud') {
+    return
+  }
   const pos = getNewWidgetPos()
   const id = await addWidget(type, pos.x, pos.y, selectedProjectId.value)
   const zIndex = topZIndex.value + 1
@@ -193,7 +200,7 @@ function detectWidgetOverlaps() {
 
 async function autoArrangeWidgets() {
   const scene = sceneRef.value
-  if (!scene || widgets.value.length === 0) return
+  if (!scene || visibleWidgets.value.length === 0) return
   const padding = 28
   const gap = 18
   const availableWidth = Math.max(280, scene.clientWidth - padding * 2)
@@ -201,7 +208,7 @@ async function autoArrangeWidgets() {
   const columnWidth = (availableWidth - gap * (columns - 1)) / columns
   const columnBottoms = Array.from({ length: columns }, () => padding)
 
-  const arranged = widgets.value.map((widget) => {
+  const arranged = visibleWidgets.value.map((widget) => {
     const element = scene.querySelector<HTMLElement>(
       `.widget-wrapper[data-widget-id="${widget.id}"] > *`,
     )
@@ -217,7 +224,9 @@ async function autoArrangeWidgets() {
   arranged.forEach((widget) => {
     setItem(`widget-layout-${widget.id}`, JSON.stringify({ x: widget.x, y: widget.y }))
   })
-  widgets.value = arranged
+  widgets.value = widgets.value.map(widget => (
+    arranged.find(item => item.id === widget.id) || widget
+  ))
   layoutVersion.value += 1
   await updateWidgetsLayout(arranged)
   updateWidgetCache()
@@ -242,8 +251,11 @@ const galleryPrimaryTypes = new Set([
   'translate',
   'news',
 ])
-const galleryPrimaryWidgets = computed(() => WIDGETS.filter(widget => galleryPrimaryTypes.has(widget.type)))
-const galleryMoreWidgets = computed(() => WIDGETS.filter(widget => !galleryPrimaryTypes.has(widget.type)))
+const availableWidgets = computed(() => (
+  WIDGETS.filter(widget => storageMode.value === 'cloud' || !widget.cloudOnly)
+))
+const galleryPrimaryWidgets = computed(() => availableWidgets.value.filter(widget => galleryPrimaryTypes.has(widget.type)))
+const galleryMoreWidgets = computed(() => availableWidgets.value.filter(widget => !galleryPrimaryTypes.has(widget.type)))
 
 watch(showGallery, (open) => {
   if (open) moreWidgetsOpen.value = false
@@ -312,7 +324,7 @@ watch(layoutArrangementRequest, () => {
   void autoArrangeWidgets()
 })
 
-watch(() => widgets.value.length, async () => {
+watch(() => visibleWidgets.value.length, async () => {
   await nextTick()
   observeWidgetSizes()
   scheduleCollisionCheck()
@@ -429,7 +441,7 @@ watch(weatherWallpaper, async (on) => {
       </button>
 
       <!-- Welcome greeting: shown while loading or when no widgets -->
-      <div v-if="loading || widgets.length === 0" class="welcome-greeting">
+      <div v-if="loading || visibleWidgets.length === 0" class="welcome-greeting">
         <span class="greeting-emoji">👋</span>
         <span class="greeting-text">你好</span>
         <span class="greeting-sub" v-if="loading">加载中...</span>
@@ -438,7 +450,7 @@ watch(weatherWallpaper, async (on) => {
 
       <!-- Dynamic widgets -->
       <WidgetWrapper
-        v-for="w in widgets"
+        v-for="w in visibleWidgets"
         :key="`${w.id}-${layoutVersion}`"
         :widget-id="w.id!"
         :type="w.type"

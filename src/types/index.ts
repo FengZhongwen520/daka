@@ -15,8 +15,9 @@ export interface CheckIn {
 
 export interface Photo {
   id?: number
-  position: 'left' | 'right'
-  dataUrl: string
+  position: string
+  dataUrl?: string
+  url?: string
   createdAt: Date
 }
 

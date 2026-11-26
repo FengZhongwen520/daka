@@ -2,55 +2,46 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
+import { getCloudToken } from '../../storage'
+import { drinkWater, getWater, type WaterState } from '../../services/cloudFeatures'
+import { ensureRealtimeConnection, subscribeRealtime } from '../../services/realtime'
+import { notify as toast } from '../../utils/feedback'
 
-import { getItem, setItem } from '../../storage'
-const DAILY_TARGET = 2000 // ml
-const DRINK_AMOUNT = 250   // ml per click
-const IDLE_WARN_MIN = 60   // turn yellow after 60 min no drink
-const IDLE_NOTIFY_MS = 3 * 60 * 1000 // idle 后每 3 分钟提醒一次
+const DAILY_TARGET = 2000
+const DRINK_AMOUNT = 250
+const IDLE_WARN_MIN = 60
+const IDLE_NOTIFY_MS = 3 * 60 * 1000
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const widgetId = props.widgetId ?? 0
 
-// Local-timezone date string (UTC via toISOString would roll the day over at 8am in UTC+8)
 function dateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Load today's data
 const today = ref(dateStr(new Date()))
-const waterKey = computed(() => `water-${today.value}${props.widgetId != null ? '-' + props.widgetId : ''}`)
-const saved = JSON.parse(getItem(waterKey.value) || 'null')
-const dailyTotal = ref(saved?.total ?? 0)
-const lastDrinkTime = ref(saved?.lastDrink ?? 0)
-const lastNotifyTime = ref(saved?.lastNotify ?? 0)
+const state = ref<WaterState | null>(null)
 const now = ref(Date.now())
+const saving = ref(false)
+const lastNotifyTime = ref(0)
+let idleTimer: ReturnType<typeof setInterval> | null = null
+let fallbackPoll: ReturnType<typeof setInterval> | null = null
+let unsubscribeRealtime: (() => void) | null = null
 
-function save() {
-  setItem(waterKey.value, JSON.stringify({ total: dailyTotal.value, lastDrink: lastDrinkTime.value, lastNotify: lastNotifyTime.value }))
-}
-
-function rolloverIfNewDay() {
-  const dayStr = dateStr(new Date())
-  if (dayStr !== today.value) {
-    today.value = dayStr
-    dailyTotal.value = 0
-    lastDrinkTime.value = 0
-    lastNotifyTime.value = 0
-  }
-}
-
-// Status
+const dailyTotal = computed(() => state.value?.totalMl ?? 0)
+const lastDrinkTime = computed(() => {
+  const value = state.value?.lastDrinkAt
+  return value ? new Date(value).getTime() : 0
+})
 const idleMinutes = computed(() => {
   if (!lastDrinkTime.value) return 0
-  return Math.floor((now.value - lastDrinkTime.value) / 60000)
+  return Math.max(0, Math.floor((now.value - lastDrinkTime.value) / 60_000))
 })
-
 const status = computed(() => {
   if (dailyTotal.value >= DAILY_TARGET) return 'healthy'
   if (idleMinutes.value >= IDLE_WARN_MIN) return 'idle'
   return 'drinking'
 })
-
 const statusLabel = computed(() => {
   switch (status.value) {
     case 'healthy': return '💪 已达标'
@@ -58,12 +49,29 @@ const statusLabel = computed(() => {
     default: return '💧 饮水'
   }
 })
-
 const progress = computed(() => Math.min(dailyTotal.value / DAILY_TARGET, 1))
 const cups = computed(() => Math.floor(dailyTotal.value / DRINK_AMOUNT))
 const targetCups = DAILY_TARGET / DRINK_AMOUNT
 
-// 喝水超时提醒 — 进入 idle 后每 3 分钟发一次桌面通知
+function tokenOrThrow(): string {
+  const token = getCloudToken()
+  if (!token) throw new Error('饮水组件为云端专属组件，请先登录')
+  return token
+}
+
+function applyState(next: WaterState) {
+  if (next.widgetId !== widgetId || next.date !== today.value) return
+  state.value = next
+}
+
+async function load() {
+  try {
+    applyState(await getWater(tokenOrThrow(), widgetId, today.value))
+  } catch (reason) {
+    toast(reason instanceof Error ? reason.message : '饮水记录加载失败', 'error')
+  }
+}
+
 let permissionRequested = false
 function ensureNotifyPermission() {
   if (permissionRequested) return
@@ -72,11 +80,11 @@ function ensureNotifyPermission() {
     Notification.requestPermission().catch(() => {})
   }
 }
+
 function checkIdleNotify() {
   if (status.value !== 'idle') return
   if (now.value - lastNotifyTime.value < IDLE_NOTIFY_MS) return
   lastNotifyTime.value = now.value
-  save()
   if (!('Notification' in window) || Notification.permission !== 'granted') {
     ensureNotifyPermission()
     return
@@ -90,26 +98,63 @@ function checkIdleNotify() {
   } catch { /* 忽略通知异常 */ }
 }
 
-// Idle check timer — also handles rolling over to a new local day while the page stays open
-let idleTimer: ReturnType<typeof setInterval>
-onMounted(() => {
+async function drink() {
+  if (saving.value) return
+  saving.value = true
+  try {
+    applyState(await drinkWater(
+      tokenOrThrow(),
+      widgetId,
+      today.value,
+      DRINK_AMOUNT,
+    ))
+    now.value = Date.now()
+    lastNotifyTime.value = 0
+  } catch (reason) {
+    toast(reason instanceof Error ? reason.message : '饮水记录保存失败', 'error')
+  } finally {
+    saving.value = false
+  }
+}
+
+function handleRealtime(payload: unknown) {
+  const next = payload as Partial<WaterState>
+  if (
+    typeof next.widgetId === 'number'
+    && typeof next.date === 'string'
+    && typeof next.totalMl === 'number'
+  ) {
+    applyState(next as WaterState)
+  }
+}
+
+function rolloverIfNewDay() {
+  const day = dateStr(new Date())
+  if (day !== today.value) {
+    today.value = day
+    state.value = null
+    lastNotifyTime.value = 0
+    void load()
+  }
+}
+
+onMounted(async () => {
+  await load()
+  unsubscribeRealtime = subscribeRealtime('water.state', handleRealtime)
+  await ensureRealtimeConnection()
   idleTimer = setInterval(() => {
     now.value = Date.now()
     rolloverIfNewDay()
     checkIdleNotify()
-  }, 10000)
+  }, 10_000)
+  fallbackPoll = setInterval(() => { void load() }, 30_000)
 })
-onUnmounted(() => clearInterval(idleTimer))
 
-// Drink
-function drink() {
-  rolloverIfNewDay()
-  dailyTotal.value += DRINK_AMOUNT
-  lastDrinkTime.value = Date.now()
-  lastNotifyTime.value = 0 // 喝水后重新计时：下次超时才提醒
-  now.value = Date.now()
-  save()
-}
+onUnmounted(() => {
+  unsubscribeRealtime?.()
+  if (idleTimer) clearInterval(idleTimer)
+  if (fallbackPoll) clearInterval(fallbackPoll)
+})
 
 // Drag
 const posKey = `water-pos${props.widgetId != null ? '-' + props.widgetId : ''}`

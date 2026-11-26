@@ -31,6 +31,7 @@ public class BearerAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return "OPTIONS".equalsIgnoreCase(request.getMethod())
+            || path.startsWith("/ws/")
             || path.equals("/api/serve/health")
             || path.equals("/api/auth/login")
             || path.equals("/api/auth/register");

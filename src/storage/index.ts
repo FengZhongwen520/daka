@@ -29,6 +29,10 @@ export const storageBusy = ref(false)
 export const storageError = ref('')
 export const storageRevision = ref(0)
 
+export function getCloudToken(): string | null {
+  return storageMode.value === 'cloud' ? sessionToken : null
+}
+
 function readRaw(key: string): string | null {
   try {
     return localStorage.getItem(key)

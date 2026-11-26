@@ -9,7 +9,13 @@
 - `interfaces.rest`：HTTP 控制器和统一错误响应。
 - `infrastructure`：JPA/H2 持久化、AES-256-GCM、PBKDF2、HMAC 和 Bearer 认证。
 
-组件数据先以现有前端的键值/JSON 结果保存，避免在第一阶段强行拆散组件状态。记录按用户隔离；存储键和值均加密，账号标识加密，密码只保存 PBKDF2 哈希，会话令牌只保存 SHA-256 哈希。
+普通组件数据以现有前端的键值/JSON 结果保存。番茄钟和饮水是云端专属领域功能，使用独立 REST 与 WebSocket：
+
+- 番茄钟倒计时由后端权威计算，运行中每 5 秒推送，操作和阶段切换立即推送。
+- 饮水记录按日期保存在服务端，每次加水通过 WebSocket 通知当前用户的其他客户端。
+- 照片云端只保存 `local-photo://...` 引用，图片内容留在当前设备的 IndexedDB。
+
+记录按用户隔离；业务状态、存储键和值均加密，账号标识加密，密码只保存 PBKDF2 哈希，会话令牌只保存 SHA-256 哈希。
 
 ## 本地启动
 
@@ -45,6 +51,10 @@ npm run test:all
 - `PUT /api/storage`
 - `DELETE /api/storage?key=...`
 - `DELETE /api/storage/all`
+- `GET|POST /api/pomodoro/...`
+- `GET|POST /api/water/...`
+- `POST /api/realtime/ticket`
+- `WS /ws/realtime?ticket=...`
 
 除注册和登录外，均要求 `Authorization: Bearer <token>`。
 
