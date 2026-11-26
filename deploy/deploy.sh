@@ -237,7 +237,9 @@ fi
 if [[ -n '$DEPLOY_OWNER' ]]; then
   $REMOTE_SUDO chown -R '$DEPLOY_OWNER' '$DEPLOY_PATH'
 fi
-find '$(dirname "$DEPLOY_PATH")' -maxdepth 1 -type d -name '$(basename "$DEPLOY_PATH").previous.*' | sort -r | tail -n +$((DEPLOY_KEEP + 1)) | xargs -r $REMOTE_SUDO rm -rf
+find '$(dirname "$DEPLOY_PATH")' -maxdepth 1 -type d -name '$(basename "$DEPLOY_PATH").previous.*' | sort -r | tail -n +$((DEPLOY_KEEP + 1)) | xargs -r $REMOTE_SUDO rm -rf || {
+  echo 'Warning: one or more old releases could not be removed; deployment will continue.' >&2
+}
 "
 
 echo "[7/8] Configuring news API service and Nginx proxy"

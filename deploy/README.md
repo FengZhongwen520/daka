@@ -74,6 +74,10 @@ git status
 
 看到 `Deployed test commit <commit>` 和 `Health checks passed` 才算成功。
 
+旧版本清理是尽力而为：如果旧目录含有宝塔保护的 `.user.ini` 等不可删除文件，
+脚本会保留该目录并告警，不会因此中断服务启动和健康检查。这些残留目录可以稍后
+由管理员处理保护属性后再清理。
+
 `deploy.ps1` 使用 npm 时对应的命令是 `npm run deploy` 和
 `npm run deploy:dry-run`。dry-run 也会构建，但不会连接服务器或修改线上文件。
 
