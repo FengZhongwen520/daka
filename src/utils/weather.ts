@@ -13,11 +13,13 @@ import {
   weatherLocationSource,
   type WeatherData,
 } from '../store'
+import {
+  WEATHER_CACHE_KEY,
+  WEATHER_GEOLOCATION_ATTEMPT_KEY,
+  WEATHER_LOCATION_CACHE_KEY,
+  WEATHER_MANUAL_LOCATION_KEY,
+} from './weatherStorage'
 
-const WEATHER_CACHE_KEY = 'daka-weather-cache-v5'
-const LOCATION_CACHE_KEY = 'daka-weather-location-v4'
-const MANUAL_LOCATION_KEY = 'daka-weather-manual-location-v3'
-const GEOLOCATION_ATTEMPT_KEY = 'daka-weather-geolocation-attempted'
 const CACHE_TTL = 10 * 60 * 1000
 const LOCATION_TTL = 24 * 60 * 60 * 1000
 
@@ -139,19 +141,19 @@ async function geocodeCity(city: string): Promise<WeatherLocation | null> {
 
 function requestGeolocation(): Promise<GeolocationPosition | null> {
   if (!navigator.geolocation) return Promise.resolve(null)
-  if (getSessionItem(GEOLOCATION_ATTEMPT_KEY) === 'denied') {
+  if (getSessionItem(WEATHER_GEOLOCATION_ATTEMPT_KEY) === 'denied') {
     return Promise.resolve(null)
   }
 
-  setSessionItem(GEOLOCATION_ATTEMPT_KEY, 'pending')
+  setSessionItem(WEATHER_GEOLOCATION_ATTEMPT_KEY, 'pending')
   return new Promise(resolve => {
     navigator.geolocation.getCurrentPosition(
       position => {
-        setSessionItem(GEOLOCATION_ATTEMPT_KEY, 'granted')
+        setSessionItem(WEATHER_GEOLOCATION_ATTEMPT_KEY, 'granted')
         resolve(position)
       },
       () => {
-        setSessionItem(GEOLOCATION_ATTEMPT_KEY, 'denied')
+        setSessionItem(WEATHER_GEOLOCATION_ATTEMPT_KEY, 'denied')
         resolve(null)
       },
       {
@@ -179,7 +181,7 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<stri
 }
 
 async function resolveLocation(allowGeolocation = false): Promise<WeatherLocation> {
-  const manual = readJson<WeatherLocation>(MANUAL_LOCATION_KEY)
+  const manual = readJson<WeatherLocation>(WEATHER_MANUAL_LOCATION_KEY)
   if (
     manual
     && Number.isFinite(manual.latitude)
@@ -188,7 +190,7 @@ async function resolveLocation(allowGeolocation = false): Promise<WeatherLocatio
     return { ...manual, source: 'manual' }
   }
 
-  const cached = readJson<WeatherLocation>(LOCATION_CACHE_KEY)
+  const cached = readJson<WeatherLocation>(WEATHER_LOCATION_CACHE_KEY)
   const cachedMaxAge = cached?.source === 'geolocation'
     ? 30 * 60 * 1000
     : LOCATION_TTL
@@ -220,7 +222,7 @@ async function resolveLocation(allowGeolocation = false): Promise<WeatherLocatio
       source: 'geolocation',
       accuracy,
     }
-    setItem(LOCATION_CACHE_KEY, JSON.stringify(location))
+    setItem(WEATHER_LOCATION_CACHE_KEY, JSON.stringify(location))
     return location
   }
 
@@ -235,7 +237,7 @@ async function resolveLocation(allowGeolocation = false): Promise<WeatherLocatio
         cachedAt: Date.now(),
         source: 'timezone',
       }
-  setItem(LOCATION_CACHE_KEY, JSON.stringify(location))
+  setItem(WEATHER_LOCATION_CACHE_KEY, JSON.stringify(location))
   return location
 }
 
@@ -361,7 +363,7 @@ export function refreshWeather(force = false, allowGeolocation = false): Promise
 export async function setWeatherCity(city: string): Promise<boolean> {
   const location = await geocodeCity(city.trim())
   if (!location) return false
-  setItem(MANUAL_LOCATION_KEY, JSON.stringify({
+  setItem(WEATHER_MANUAL_LOCATION_KEY, JSON.stringify({
     ...location,
     cachedAt: Date.now(),
     source: 'manual',
@@ -371,10 +373,10 @@ export async function setWeatherCity(city: string): Promise<boolean> {
 }
 
 export async function useAutomaticWeatherLocation(): Promise<boolean> {
-  removeItem(MANUAL_LOCATION_KEY)
-  removeItem(LOCATION_CACHE_KEY)
+  removeItem(WEATHER_MANUAL_LOCATION_KEY)
+  removeItem(WEATHER_LOCATION_CACHE_KEY)
   removeItem(WEATHER_CACHE_KEY)
-  removeSessionItem(GEOLOCATION_ATTEMPT_KEY)
+  removeSessionItem(WEATHER_GEOLOCATION_ATTEMPT_KEY)
   return refreshWeather(true, true)
 }
 

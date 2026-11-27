@@ -114,7 +114,7 @@ async function runSync() {
       <section class="sync-section">
         <div class="sync-section-head">
           <strong>同步方向</strong>
-          <small>云端项目同步到本地时，云端照片引用无法还原图片内容。</small>
+          <small>项目中的天气城市会一并同步；云端照片引用无法在本地还原图片内容。</small>
         </div>
         <div class="sync-segments">
           <button type="button" :class="{ active: direction === 'local-to-cloud' }" @click="direction = 'local-to-cloud'">

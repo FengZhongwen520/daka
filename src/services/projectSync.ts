@@ -7,6 +7,7 @@ import {
   setLocalItem,
 } from '../storage'
 import { deleteRecord, loadRecords, putRecord } from '../storage/api'
+import { WEATHER_PROJECT_SYNC_KEYS } from '../utils/weatherStorage'
 
 export type SyncDirection = 'local-to-cloud' | 'cloud-to-local'
 export type SyncStrategy = 'overwrite' | 'append'
@@ -250,6 +251,7 @@ async function syncCloudToLocal(
     if (sourceProject.id == null || !options.projectIds.includes(sourceProject.id)) continue
     const sourceProjectId = sourceProject.id
     const sourceWidgets = cloudWidgets.filter(widget => widget.projectId === sourceProjectId)
+    const syncsWeather = sourceWidgets.some(widget => widget.type === 'weather')
     const conflict = localProjects.some(project => project.id === sourceProjectId)
     const targetProjectId = options.strategy === 'overwrite' && conflict
       ? sourceProjectId
@@ -291,11 +293,15 @@ async function syncCloudToLocal(
     }
     for (const [key, value] of allCloud) {
       if (DOMAIN_KEYS.has(key)) continue
-      if (!keyBelongsToWidget(
-        key,
-        sourceProjectId,
-        new Set(sourceWidgets.map(widget => widget.id).filter((id): id is number => id != null)),
-      )) continue
+      const weatherDataForProject = syncsWeather && WEATHER_PROJECT_SYNC_KEYS.has(key)
+      if (
+        !weatherDataForProject
+        && !keyBelongsToWidget(
+          key,
+          sourceProjectId,
+          new Set(sourceWidgets.map(widget => widget.id).filter((id): id is number => id != null)),
+        )
+      ) continue
       setLocalItem(remapKey(key, sourceProjectId, targetProjectId, widgetMap), value)
       recordCount += 1
     }
@@ -364,7 +370,12 @@ async function buildLocalBundles(projectIds: number[]): Promise<ProjectBundle[]>
     const widgetIds = new Set(projectWidgets.map(widget => widget.id!).filter(Boolean))
     const records = Object.fromEntries(
       Object.entries(allKv).filter(([key]) => (
-        key === `widgets-cache-${project.id}` || keyBelongsToWidget(key, project.id!, widgetIds)
+        key === `widgets-cache-${project.id}`
+        || keyBelongsToWidget(key, project.id!, widgetIds)
+        || (
+          projectWidgets.some(widget => widget.type === 'weather')
+          && WEATHER_PROJECT_SYNC_KEYS.has(key)
+        )
       )),
     )
     const photoRefs = await createLocalPhotoReferences(photos, projectWidgets)
