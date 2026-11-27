@@ -84,7 +84,7 @@ function goToStep(index: number) {
         <div v-show="welcomeStep === 1" class="welcome-page">
           <p class="guide-eyebrow">FIRST 60 SECONDS</p>
           <h3>四步搭出第一张工作台。</h3>
-          <p class="guide-lead">首次进入会自动创建“默认项目”，并放好天气、待办、搜索、时钟、收藏夹、日历、资讯雷达、日记、翻译、计算器和照片框。你可以直接使用，也可以自由删除、移动和缩放。</p>
+          <p class="guide-lead">首次进入会自动创建“默认项目”，并放好天气、待办、日记、计算器、搜索、翻译、照片框、收藏夹和资讯雷达。你可以直接使用，也可以自由删除、移动和缩放。</p>
           <div class="setup-list">
             <div class="setup-item">
               <span>01</span>

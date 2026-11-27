@@ -3,16 +3,18 @@ import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { useWidgetDrag } from '../../composables/useWidgetDrag'
 import DragBar from '../common/DragBar.vue'
 
-import { removeItem } from '../../storage'
+import { getItem, removeItem, setItem } from '../../storage'
 const input = ref('')
 const result = ref('')
 const inputRef = ref<HTMLInputElement>()
-const keyboardVisible = ref(true)
 const title = ref('🔢 计算器')
 const copied = ref(false)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
 const props = defineProps<{ widgetId?: number; initialX?: number; initialY?: number }>()
+const keyboardKey = `calc-keyboard${props.widgetId != null ? '-' + props.widgetId : ''}`
+const keyboardVisible = ref(getItem(keyboardKey) !== 'false')
+watch(keyboardVisible, value => setItem(keyboardKey, String(value)))
 const legacyHistoryKey = `calc-history${props.widgetId != null ? '-' + props.widgetId : ''}`
 removeItem(legacyHistoryKey)
 

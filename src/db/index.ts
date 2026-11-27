@@ -151,7 +151,14 @@ export async function ensureDefaultWorkspace(): Promise<boolean> {
       setItem(`todo-${widgetId}-groups`, JSON.stringify(DEFAULT_TODO_GROUPS))
     }
     if (widget.type === 'bookmarks') {
+      setItem(`bm-size-${widgetId}`, JSON.stringify({ cols: 2, rows: 2 }))
       await addSiteItems(DEFAULT_BOOKMARK_SITES, widgetId)
+    }
+    if (widget.type === 'news') {
+      setItem(`news-size-${widgetId}`, JSON.stringify({ width: 300, height: 320 }))
+    }
+    if (widget.type === 'calculator') {
+      setItem(`calc-keyboard-${widgetId}`, 'false')
     }
   }
   setItem('last-project', String(projectId))

@@ -11,17 +11,15 @@ export interface DefaultWidgetPlacement {
 }
 
 export const DEFAULT_WORKSPACE_WIDGETS: DefaultWidgetPlacement[] = [
-  { type: 'weather', x: 24, y: 24 },
-  { type: 'todo', x: 288, y: 24 },
-  { type: 'searchengine', x: 552, y: 24 },
-  { type: 'clock', x: 896, y: 24 },
-  { type: 'bookmarks', x: 24, y: 340 },
-  { type: 'calendar', x: 362, y: 340 },
-  { type: 'news', x: 806, y: 340 },
-  { type: 'diary', x: 24, y: 820 },
-  { type: 'translate', x: 388, y: 820 },
-  { type: 'calculator', x: 732, y: 820 },
-  { type: 'photoframe', x: 996, y: 820 },
+  { type: 'weather', x: 16, y: 6 },
+  { type: 'todo', x: 16, y: 302 },
+  { type: 'diary', x: 272, y: 6 },
+  { type: 'calculator', x: 272, y: 430 },
+  { type: 'searchengine', x: 628, y: 6 },
+  { type: 'translate', x: 628, y: 201 },
+  { type: 'photoframe', x: 628, y: 479 },
+  { type: 'bookmarks', x: 958, y: 6 },
+  { type: 'news', x: 958, y: 242 },
 ]
 
 export const DEFAULT_TODO_GROUPS = [
