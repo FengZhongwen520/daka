@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import type { Project, CheckIn, Photo, Memo, DiaryEntry, ExportData } from '../types'
 import {
   clearItems,
+  cloudUser,
   flushStorage,
   getAllItems,
   getItem,
@@ -9,6 +10,10 @@ import {
   setItem,
   storageMode,
 } from '../storage'
+import {
+  DEFAULT_WORKSPACE_PROJECT,
+  DEFAULT_WORKSPACE_WIDGETS,
+} from '../defaultWorkspace'
 
 export type BookmarkSource = 'custom' | 'imported'
 export interface SiteItem {
@@ -99,6 +104,50 @@ function writeCloudCollection<T>(key: string, value: T[]): void {
 
 function nextNumericId(items: Array<{ id?: number }>): number {
   return items.reduce((max, item) => Math.max(max, item.id ?? 0), 0) + 1
+}
+
+const DEFAULT_WORKSPACE_MARKER_PREFIX = 'daka.storage.default-workspace-initialized.v1'
+
+function defaultWorkspaceMarker(): string {
+  const scope = storageMode.value === 'cloud'
+    ? `cloud.${cloudUser.value?.id || 'unknown'}`
+    : 'local'
+  return `${DEFAULT_WORKSPACE_MARKER_PREFIX}.${scope}`
+}
+
+function hasInitializedDefaultWorkspace(): boolean {
+  try {
+    return localStorage.getItem(defaultWorkspaceMarker()) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markDefaultWorkspaceInitialized(): void {
+  try {
+    localStorage.setItem(defaultWorkspaceMarker(), '1')
+  } catch {
+    // A seeded project still prevents duplicate defaults on the next load.
+  }
+}
+
+export async function ensureDefaultWorkspace(): Promise<boolean> {
+  if (hasInitializedDefaultWorkspace()) return false
+
+  const existingProjects = await getProjects()
+  if (existingProjects.length > 0) {
+    markDefaultWorkspaceInitialized()
+    return false
+  }
+
+  const projectId = await addProject(DEFAULT_WORKSPACE_PROJECT)
+  for (const widget of DEFAULT_WORKSPACE_WIDGETS) {
+    await addWidget(widget.type, widget.x, widget.y, projectId)
+  }
+  setItem('last-project', String(projectId))
+  if (storageMode.value === 'cloud') await flushStorage()
+  markDefaultWorkspaceInitialized()
+  return true
 }
 
 // Project CRUD

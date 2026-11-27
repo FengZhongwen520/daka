@@ -1,10 +1,12 @@
 import { createApp } from 'vue'
 import './style.css'
 import { initializeStorage } from './storage'
+import { ensureDefaultWorkspace } from './db'
 
 async function bootstrap() {
   // Storage must be hydrated before component modules read their initial values.
   await initializeStorage()
+  await ensureDefaultWorkspace()
   const { default: App } = await import('./App.vue')
   const app = createApp(App)
   app.mount('#app')

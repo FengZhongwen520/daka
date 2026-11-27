@@ -1,3 +1,5 @@
+import { DEFAULT_WORKSPACE_WIDGETS } from '../../defaultWorkspace'
+
 export interface WidgetDef {
   type: string
   name: string
@@ -32,4 +34,4 @@ export const WIDGETS: WidgetDef[] = [
   { type: 'fan', name: '电风扇', icon: '🌀', desc: '3档调速桌面风扇', defaultPos: { x: 600, y: 120 } },
 ]
 
-export const DEFAULT_WIDGETS = ['calendar', 'sticky', 'photoframe', 'weather', 'news']
+export const DEFAULT_WIDGETS = DEFAULT_WORKSPACE_WIDGETS.map(widget => widget.type)
