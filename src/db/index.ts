@@ -11,6 +11,9 @@ import {
   storageMode,
 } from '../storage'
 import {
+  DEFAULT_BOOKMARK_SITES,
+  DEFAULT_TODO_GROUPS,
+  DEFAULT_TODO_ITEMS,
   DEFAULT_WORKSPACE_PROJECT,
   DEFAULT_WORKSPACE_WIDGETS,
 } from '../defaultWorkspace'
@@ -142,7 +145,14 @@ export async function ensureDefaultWorkspace(): Promise<boolean> {
 
   const projectId = await addProject(DEFAULT_WORKSPACE_PROJECT)
   for (const widget of DEFAULT_WORKSPACE_WIDGETS) {
-    await addWidget(widget.type, widget.x, widget.y, projectId)
+    const widgetId = await addWidget(widget.type, widget.x, widget.y, projectId)
+    if (widget.type === 'todo') {
+      setItem(`todo-${widgetId}-items`, JSON.stringify(DEFAULT_TODO_ITEMS))
+      setItem(`todo-${widgetId}-groups`, JSON.stringify(DEFAULT_TODO_GROUPS))
+    }
+    if (widget.type === 'bookmarks') {
+      await addSiteItems(DEFAULT_BOOKMARK_SITES, widgetId)
+    }
   }
   setItem('last-project', String(projectId))
   if (storageMode.value === 'cloud') await flushStorage()

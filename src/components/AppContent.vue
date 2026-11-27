@@ -587,7 +587,8 @@ watch(weatherWallpaper, async (on) => {
     radial-gradient(ellipse at 18% -12%, rgba(255, 255, 255, 0.48) 0%, transparent 48%),
     radial-gradient(ellipse at 82% 110%, rgba(128, 105, 74, 0.045) 0%, transparent 54%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, rgba(238, 231, 218, 0.06) 100%);
-  overflow: hidden; min-height: 500px;
+  overflow: auto; min-height: 500px;
+  scrollbar-gutter: stable;
   transition: background-color 1.5s ease, box-shadow 1.5s ease;
 }
 .calendar-scene.show-layout-grid::after {

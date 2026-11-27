@@ -224,12 +224,6 @@ export function createDefaultNewsTabs(): NewsTabConfig[] {
       sourceIds: ['qbitai', 'ithome', 'ifanr', 'tmtpost'],
     },
     {
-      id: 'shenzhen',
-      name: '深圳本地',
-      categoryId: 'shenzhen',
-      sourceIds: ['shenzhen-gov', 'shenzhen-gov-projects', 'shenzhen-news'],
-    },
-    {
       id: 'games',
       name: '游戏',
       categoryId: 'games',
